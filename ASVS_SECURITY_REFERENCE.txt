@@ -1,0 +1,198 @@
+OWASP ASVS Security Reference for Admin Frontend Integration
+
+Purpose
+- Keep this file as a security checklist and code reference when integrating a real backend.
+- Scope focuses on frontend-to-backend integration patterns aligned to ASVS controls.
+
+============================================================
+1) Session and Token Handling (ASVS 3.2, 3.3)
+============================================================
+Preferred backend pattern
+- Access token: short-lived JWT (5 to 15 minutes).
+- Refresh token: httpOnly + Secure + SameSite cookie.
+- Do not store refresh tokens in localStorage.
+
+Recommended frontend pattern
+- Keep access token in memory where possible.
+- On reload, re-establish session via refresh endpoint (cookie-based).
+
+Code segment: in-memory access token with axios
+
+let accessToken = null;
+
+function setAccessToken(token) {
+  accessToken = token;
+}
+
+axiosInstance.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+
+Code segment: refresh flow guard
+
+let isRefreshing = false;
+let queue = [];
+
+async function refreshAndReplay(originalRequest) {
+  if (isRefreshing) {
+    return new Promise((resolve) => {
+      queue.push((token) => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        resolve(axiosInstance(originalRequest));
+      });
+    });
+  }
+
+  isRefreshing = true;
+  try {
+    const { data } = await axiosInstance.post('/api/auth/refresh', {}, { withCredentials: true });
+    setAccessToken(data.accessToken);
+    queue.forEach((cb) => cb(data.accessToken));
+    queue = [];
+    originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+    return axiosInstance(originalRequest);
+  } finally {
+    isRefreshing = false;
+  }
+}
+
+============================================================
+2) Password and Auth Input Rules (ASVS 2.1)
+============================================================
+Frontend should enforce baseline validation, backend must enforce authoritative validation.
+
+Code segment: client-side password baseline
+
+function validatePassword(pwd) {
+  if (pwd.length < 12) return false;
+  return true;
+}
+
+Do
+- Use generic error messages for login failures.
+- Keep rate limiting and lockout entirely in backend.
+
+Do not
+- Reveal whether email exists.
+
+============================================================
+3) Transport and API Security (ASVS 9.1)
+============================================================
+Do
+- Force HTTPS in production.
+- Send credentials only to trusted base URL from env.
+- Set timeout and content type.
+
+Code segment: secure axios defaults
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL,
+  timeout: 10000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+});
+
+============================================================
+4) CSRF and SameSite (ASVS 4.3)
+============================================================
+If using cookie auth/refresh:
+- Backend should set SameSite=Lax or Strict for auth cookies.
+- Backend should use CSRF protection for state-changing routes.
+- Frontend should send CSRF token header when required.
+
+Code segment: CSRF header forwarding
+
+api.interceptors.request.use((config) => {
+  const csrfToken = sessionStorage.getItem('csrfToken');
+  if (csrfToken) {
+    config.headers['X-CSRF-Token'] = csrfToken;
+  }
+  return config;
+});
+
+============================================================
+5) Access Control and Role Checks (ASVS 4.1)
+============================================================
+Frontend role checks are UX only; backend RBAC is mandatory.
+
+Code segment: frontend guard example
+
+function canViewAdminPage(admin) {
+  return admin && admin.role === 'admin';
+}
+
+Backend must still enforce:
+- deny by default
+- role validation on every protected endpoint
+
+============================================================
+6) Output Encoding and XSS Safety (ASVS 5.1)
+============================================================
+Do
+- Render server data as plain text in React.
+- Avoid dangerouslySetInnerHTML unless sanitized server-side and client-side.
+
+Code segment: safe render pattern
+
+<p>{serverMessage}</p>
+
+============================================================
+7) Logging and Error Handling (ASVS 10.2)
+============================================================
+Do
+- Show user-friendly errors in UI.
+- Log sensitive details only on backend, not browser console in production.
+
+Code segment: safe error mapping
+
+function mapApiError(err) {
+  return err?.response?.data?.message || 'Request failed. Please try again.';
+}
+
+============================================================
+8) Secure Logout and Session End (ASVS 3.3)
+============================================================
+Do
+- Call backend logout endpoint to invalidate refresh token/session.
+- Clear in-memory token and local client state.
+- Redirect to login.
+
+Code segment
+
+async function secureLogout() {
+  try {
+    await api.post('/api/auth/logout');
+  } finally {
+    setAccessToken(null);
+    localStorage.removeItem('accessToken');
+    window.location.href = '/login';
+  }
+}
+
+============================================================
+9) Integration Checklist for Your Colleague Backend
+============================================================
+- [ ] Access token short lifetime implemented.
+- [ ] Refresh token in httpOnly Secure cookie.
+- [ ] /api/auth/refresh endpoint implemented with rotation/revocation.
+- [ ] Backend RBAC for all admin endpoints.
+- [ ] CSRF strategy defined for cookie-based auth.
+- [ ] Consistent error schema: { message, statusCode }.
+- [ ] CORS restricted to your admin frontend origin.
+- [ ] Rate limiting and brute-force protection on login.
+- [ ] Audit logs for admin actions.
+- [ ] Password policy and account lockout policy implemented.
+
+============================================================
+10) Current Frontend Mode
+============================================================
+This admin frontend is currently running in mock mode (no backend dependency).
+When backend is ready:
+- Replace mock service functions in src/services/apiClient.ts
+- Keep the security patterns above as baseline requirements.
