@@ -1,54 +1,118 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import strayHelpLogo from '../assets/StrayHelp-Logo-1.png';
 
 export const Layout = ({ children, title }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const adminName = typeof window !== 'undefined'
+    ? window.localStorage.getItem('adminName') || 'Admin User'
+    : 'Admin User';
+
+  const handleLogout = () => {
+    window.localStorage.removeItem('adminName');
+    window.localStorage.removeItem('adminEmail');
+    setProfileOpen(false);
+    navigate('/login');
+  };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gray-900 text-white transition-all`}>
-        <div className="p-4 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-500 rounded-lg flex items-center justify-center font-bold">
-              SH
-            </div>
-            {sidebarOpen && <span className="font-bold">StrayHelp</span>}
+    <div className="relative min-h-screen bg-gradient-to-br from-[#fafaf8] via-[#f4f6f2] to-[#f8f8f4]">
+      <aside
+        className={`fixed inset-y-0 left-0 z-20 hidden border-r border-white/10 bg-[#77806d] text-white transition-all duration-300 lg:flex ${
+          sidebarOpen ? 'w-64' : 'w-20'
+        }`}
+      >
+        <div className="flex h-full w-full flex-col">
+          <div className="flex items-baseline gap-2 px-6 py-6">
+            <img src={strayHelpLogo} alt="StrayHelp logo" className="h-8 w-auto align-middle object-contain" />
+            {sidebarOpen && <span className="text-xl font-semibold leading-none tracking-tight">StrayHelp</span>}
           </div>
-        </div>
 
-        <nav className="mt-6 space-y-2 px-2">
-          <SidebarItem to="/"label="Dashboard" open={sidebarOpen} />
-          <SidebarItem to="/users"label="Users" open={sidebarOpen} />
-          <SidebarItem to="/reports"label="Reports" open={sidebarOpen} />
-          <SidebarItem to="/donations"label="Donations" open={sidebarOpen} />
-          <SidebarItem to="/organizations"label="Organizations" open={sidebarOpen} />
-        </nav>
+          <nav className="mt-2 space-y-1 px-3">
+            <SidebarItem to="/dashboard" label="Dashboard" open={sidebarOpen} icon={<SidebarIcon type="dashboard" />} />
+            <SidebarItem to="/users" label="Users" open={sidebarOpen} icon={<SidebarIcon type="users" />} />
+            <SidebarItem to="/reports" label="Reports" open={sidebarOpen} icon={<SidebarIcon type="reports" />} />
+            <SidebarItem to="/donations" label="Donations" open={sidebarOpen} icon={<SidebarIcon type="donations" />} />
+            <SidebarItem to="/organizations" label="Organizations" open={sidebarOpen} icon={<SidebarIcon type="organizations" />} />
+            <SidebarItem to="/settings" label="Settings" open={sidebarOpen} icon={<SidebarIcon type="settings" />} />
+          </nav>
+
+          <div className="mt-auto px-6 pb-6" />
+        </div>
       </aside>
 
-      {/* Main */}
-      <div className="flex-1 flex flex-col">
-
-        {/* Header */}
-        <header className="bg-white border-b px-6 py-4 flex justify-between items-center">
+      <div className={`flex min-h-screen flex-col ${sidebarOpen ? 'lg:pl-64' : 'lg:pl-20'}`}>
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/40 bg-white/70 px-6 py-4 backdrop-blur">
           <div className="flex items-center gap-4">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)}>
+            <button
+              className="rounded-lg border border-[#e2e6dc] bg-white px-2.5 py-2 text-[#6c7669] shadow-sm"
+              type="button"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
               ☰
             </button>
-            {title && <h1 className="text-xl font-bold">{title}</h1>}
+            {title && <h1 className="text-xl font-semibold text-[#4b5548]">{title}</h1>}
           </div>
 
-          <div className="text-sm text-gray-500">
-            Admin Panel
+          <div className="flex flex-1 items-center justify-end gap-4">
+            <div className="relative hidden w-full max-w-md lg:block">
+              <input
+                type="text"
+                placeholder="Search here"
+                className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                  <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="m20 20-3.4-3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </span>
+            </div>
+            <button className="hidden rounded-full border border-[#e2e6dc] bg-white p-2 text-[#6c7669] shadow-sm lg:inline-flex" type="button">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                <path d="M9.5 19a2.5 2.5 0 0 0 5 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </button>
+            <div className="relative">
+              <button
+                type="button"
+                className="flex items-center gap-3 rounded-full bg-white px-3 py-2 shadow-sm"
+                onClick={() => setProfileOpen((open) => !open)}
+                aria-expanded={profileOpen}
+                aria-haspopup="menu"
+              >
+                <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-[#4b5548]">{adminName}</p>
+                  <p className="text-xs text-[#9aa294]">Admin</p>
+                </div>
+              </button>
+
+              {profileOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-3 w-44 rounded-2xl border border-[#e2e6dc] bg-white p-2 text-sm text-[#4b5548] shadow-lg"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="w-full rounded-xl px-3 py-2 text-left transition hover:bg-[#f3f5ef]"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        <main className="p-6 overflow-auto flex-1">
+        <main className="flex-1 overflow-auto p-6 lg:p-8">
           {children}
         </main>
-
       </div>
     </div>
   );
@@ -60,13 +124,75 @@ const SidebarItem = ({ to, icon, label, open }) => {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition ${
-          isActive ? 'bg-gray-800' : 'hover:bg-gray-800'
+        `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition ${
+          isActive ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10'
         }`
       }
     >
-      <span className="text-xl">{icon}</span>
+      <span className="text-lg">{icon}</span>
       {open && <span>{label}</span>}
     </NavLink>
   );
+};
+
+const SidebarIcon = ({ type }) => {
+  const commonProps = {
+    className: 'h-5 w-5',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.6,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round'
+  };
+
+  switch (type) {
+    case 'dashboard':
+      return (
+        <svg viewBox="0 0 24 24" {...commonProps} aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="2" />
+          <rect x="14" y="3" width="7" height="7" rx="2" />
+          <rect x="3" y="14" width="7" height="7" rx="2" />
+          <rect x="14" y="14" width="7" height="7" rx="2" />
+        </svg>
+      );
+    case 'users':
+      return (
+        <svg viewBox="0 0 24 24" {...commonProps} aria-hidden="true">
+          <path d="M16 11a4 4 0 1 0-8 0" />
+          <path d="M4 20a8 8 0 0 1 16 0" />
+          <circle cx="12" cy="7" r="3" />
+        </svg>
+      );
+    case 'reports':
+      return (
+        <svg viewBox="0 0 24 24" {...commonProps} aria-hidden="true">
+          <path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+          <path d="M14 4v4h4" />
+          <path d="M8 13h8" />
+          <path d="M8 17h6" />
+        </svg>
+      );
+    case 'donations':
+      return (
+        <svg viewBox="0 0 24 24" {...commonProps} aria-hidden="true">
+          <path d="M12 21s-6-4.6-8.5-7.5A5 5 0 0 1 12 6a5 5 0 0 1 8.5 7.5C18 16.4 12 21 12 21Z" />
+        </svg>
+      );
+    case 'organizations':
+      return (
+        <svg viewBox="0 0 24 24" {...commonProps} aria-hidden="true">
+          <path d="M3 20h18" />
+          <path d="M5 20V8l7-4 7 4v12" />
+          <path d="M9 20v-6h6v6" />
+        </svg>
+      );
+    case 'settings':
+    default:
+      return (
+        <svg viewBox="0 0 24 24" {...commonProps} aria-hidden="true">
+          <path d="M12 15a3 3 0 1 0-3-3" />
+          <path d="M19.4 15a7.5 7.5 0 0 0 .1-2l2-1.2-2-3.4-2.2.6a7.6 7.6 0 0 0-1.6-.9L14 4h-4l-.7 2.9c-.6.2-1.1.5-1.6.9l-2.2-.6-2 3.4 2 1.2a7.5 7.5 0 0 0 0 2l-2 1.2 2 3.4 2.2-.6c.5.4 1 .7 1.6.9L10 20h4l.7-2.9c.6-.2 1.1-.5 1.6-.9l2.2.6 2-3.4-2-1.2Z" />
+        </svg>
+      );
+  }
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -7,6 +7,7 @@ import { UsersPage } from './pages/UsersPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { DonationsPage } from './pages/DonationsPage';
 import { OrganizationsPage } from './pages/OrganizationsPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 import './index.css';
 
@@ -17,18 +18,56 @@ function App() {
 
         <Route path="/login" element={<LoginPage />} />
 
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/reports" element={<ReportsPage />} />
-        <Route path="/donations" element={<DonationsPage />} />
-        <Route path="/organizations" element={<OrganizationsPage />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={(
+          <RequireAuth>
+            <DashboardPage />
+          </RequireAuth>
+        )} />
+        <Route path="/users" element={(
+          <RequireAuth>
+            <UsersPage />
+          </RequireAuth>
+        )} />
+        <Route path="/reports" element={(
+          <RequireAuth>
+            <ReportsPage />
+          </RequireAuth>
+        )} />
+        <Route path="/donations" element={(
+          <RequireAuth>
+            <DonationsPage />
+          </RequireAuth>
+        )} />
+        <Route path="/organizations" element={(
+          <RequireAuth>
+            <OrganizationsPage />
+          </RequireAuth>
+        )} />
+        <Route path="/settings" element={(
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        )} />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
 
       </Routes>
     </Router>
   );
 }
+
+const RequireAuth = ({ children }) => {
+  const location = useLocation();
+  const adminName = typeof window !== 'undefined'
+    ? window.localStorage.getItem('adminName')
+    : null;
+
+  if (!adminName) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
 
 export default App;

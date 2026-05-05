@@ -1,41 +1,132 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import strayHelpLogo from '../assets/StrayHelp-Logo-2.png';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const formatAdminName = (value) => {
+    if (!value) {
+      return 'Admin User';
+    }
+
+    const namePart = value.split('@')[0] || value;
+    return namePart
+      .replace(/[._-]+/g, ' ')
+      .trim()
+      .split(' ')
+      .filter(Boolean)
+      .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+      .join(' ');
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    navigate('/');
+    const normalizedEmail = email.trim();
+    const adminName = formatAdminName(normalizedEmail);
+
+    window.localStorage.setItem('adminName', adminName);
+    window.localStorage.setItem('adminEmail', normalizedEmail);
+    navigate('/dashboard');
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-lg shadow w-full max-w-sm"
-      >
-        <h1 className="text-2xl font-bold mb-6 text-center">Admin Login</h1>
+    <div className="relative min-h-screen bg-gradient-to-br from-[#fafaf8] via-[#f4f6f2] to-[#f8f8f4] lg:flex">
+      <section className="flex min-h-[34vh] w-full items-center justify-center px-6 py-10 sm:px-10 lg:min-h-screen lg:w-1/2 lg:px-16">
+        <div className="w-full max-w-xl">
+          <div className="mb-12 flex flex-col items-start gap-4">
+            <img
+              src={strayHelpLogo}
+              alt="StrayHelp logo"
+              className="h-16 w-auto max-w-none object-contain sm:h-20 lg:h-24"
+            />
+            <p className="text-sm uppercase tracking-[0.35em] text-[#77806d]">Admin Portal</p>
+          </div>
 
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full mb-3 p-2 border rounded"
-        />
+          <h2 className="max-w-md text-4xl font-bold leading-tight tracking-tight text-[#77806d] sm:text-5xl">
+            Efficiently Manage Organizations, Donations, and Reports
+          </h2>
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full mb-4 p-2 border rounded"
-        />
+          <p className="mt-5 max-w-lg text-base leading-7 text-[#77806d] sm:text-lg">
+            StrayHelp Admin Portal helps streamline organization management, track donations, monitor rescue reports, and support better care for stray animals.
+          </p>
+        </div>
+      </section>
 
-        <button
-          type="submit"
-          className="w-full bg-red-500 text-white py-2 rounded hover:bg-red-600"
-        >
-          Login
-        </button>
-      </form>
+      <section className="flex min-h-[66vh] w-full items-center justify-center px-6 py-10 sm:px-10 lg:min-h-screen lg:w-1/2 lg:px-16">
+        <div className="relative w-full max-w-md overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,#77806d_0%,#66715b_100%)] p-8 shadow-[0_24px_60px_rgba(0,0,0,0.18)] sm:p-10">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.08),transparent_32%)]" />
+          <div className="pointer-events-none absolute inset-0 rounded-[2rem] ring-1 ring-white/10" />
+
+          <div className="relative z-10">
+            <div className="mb-8 flex items-center justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-white/85">
+                  Secure Admin Access
+                </div>
+                <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">Login</h1>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-white/85">Sign in to your StrayHelp admin account.</p>
+              </div>
+              <div className="hidden h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-xl text-white shadow-[0_8px_20px_rgba(0,0,0,0.12)] sm:flex">
+                ⌘
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 text-sm text-[#333333] shadow-[0_1px_0_rgba(255,255,255,0.65)_inset] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/35"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 text-sm text-[#333333] shadow-[0_1px_0_rgba(255,255,255,0.65)_inset] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/35"
+                  required
+                />
+                <button
+                  type="button"
+                  className="mt-2 ml-auto block text-sm font-medium text-white/90 hover:opacity-80"
+                  onClick={() => {}}
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#77806d] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_12px_28px_rgba(0,0,0,0.14)]"
+              >
+                Sign In
+              </button>
+            </form>
+
+            <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs text-white/80">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/10 text-black">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="none" aria-hidden="true">
+                  <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.8" />
+                  <path d="M12 14.5v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </span>
+              <span>Protected login for authorized staff only.</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
