@@ -10,6 +10,7 @@ import { OrganizationsPage } from './pages/OrganizationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 
 import './index.css';
+import './App.css';
 
 function App() {
   return (

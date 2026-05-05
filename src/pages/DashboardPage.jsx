@@ -57,7 +57,7 @@ export const DashboardPage = () => {
       <div className="grid gap-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {summaryCards.map((stat) => (
-            <div key={stat.label} className="rounded-2xl bg-white p-5 shadow-sm">
+            <div key={stat.label} className="card-md">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-[#7a8476]">{stat.label}</p>
@@ -72,16 +72,16 @@ export const DashboardPage = () => {
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <div className="card-lg">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#4b5548]">Recent Donations</h2>
-              <button className="rounded-full bg-[#e6eadf] px-3 py-1 text-xs font-semibold text-[#6c7669]">
+              <button className="btn-pill-muted">
                 See all
               </button>
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-xl border border-[#e6eadf]">
-              <div className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+            <div className="table-wrap">
+              <div className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center table-head">
                 <span>Donor</span>
                 <span>Organization</span>
                 <span>Method</span>
@@ -94,7 +94,7 @@ export const DashboardPage = () => {
                 { donor: 'Annie Clarke', org: 'Hope for Strays', amount: '₱4,100.00', method: 'Card', date: 'Apr 22, 2026' },
                 { donor: 'Carlos Mendez', org: 'City Care Network', amount: '₱1,200.00', method: 'GCash', date: 'Apr 21, 2026' },
               ].map((row, index) => (
-                <div key={`${row.org}-${index}`} className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]">
+                <div key={`${row.org}-${index}`} className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center table-row">
                   <span className="font-semibold text-[#4b5548]">{row.donor}</span>
                   <span>{row.org}</span>
                   <span className="inline-flex w-fit items-center rounded-full border border-[#e2e6dc] bg-[#fafaf8] px-3 py-1 text-xs font-semibold text-[#6c7669]">
@@ -107,10 +107,10 @@ export const DashboardPage = () => {
             </div>
           </div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <div className="card-lg">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#4b5548]">Recent Users</h2>
-              <button className="rounded-full bg-[#e6eadf] px-3 py-1 text-xs font-semibold text-[#6c7669]">
+              <button className="btn-pill-muted">
                 See all
               </button>
             </div>
@@ -168,7 +168,7 @@ export const DashboardPage = () => {
                   </div>
                   <div className="flex items-center gap-2 text-[#77806d]">
                     <button
-                      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc]"
+                      className="icon-btn"
                       title="View user"
                       onClick={() => setSelectedUser(user)}
                     >
@@ -187,11 +187,11 @@ export const DashboardPage = () => {
 
       {selectedUser && (
         <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6"
+          className="modal-overlay"
           onClick={() => setSelectedUser(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
+            className="modal-card max-w-lg"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -200,7 +200,7 @@ export const DashboardPage = () => {
                 <h3 className="mt-2 text-xl font-semibold text-[#4b5548]">{selectedUser.name}</h3>
                 <p className="text-sm text-[#7a8476]">{selectedUser.role}</p>
               </div>
-              <span className="inline-flex items-center rounded-full bg-[#eef1e9] px-3 py-1 text-xs font-semibold text-[#6c7669]">
+              <span className="badge-neutral">
                 {selectedUser.status}
               </span>
             </div>
@@ -227,7 +227,7 @@ export const DashboardPage = () => {
             <div className="mt-6 flex items-center justify-end">
               <button
                 type="button"
-                className="rounded-full border border-[#e2e6dc] px-4 py-2 text-sm font-semibold text-[#6c7669] transition hover:bg-[#f3f5ef]"
+                className="btn-outline"
                 onClick={() => setSelectedUser(null)}
               >
                 Close

@@ -185,12 +185,12 @@ export const SettingsPage = () => {
               <div className="space-y-4">
                 {/* Profile Picture */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Profile Picture</label>
+                  <label className="form-label">Profile Picture</label>
                   <div className="flex items-center gap-4">
                     <div className="h-16 w-16 rounded-full bg-[#e6eadf]" />
                     <button
                       type="button"
-                      className="flex items-center gap-2 rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-medium text-[#6c7669] shadow-sm hover:bg-[#f9faf8]"
+                      className="btn-secondary flex items-center gap-2"
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -202,23 +202,23 @@ export const SettingsPage = () => {
 
                 {/* Admin Name */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Admin Name</label>
+                  <label className="form-label">Admin Name</label>
                   <input
                     type="text"
                     value={profileData.adminName}
                     onChange={(e) => handleProfileChange('adminName', e.target.value)}
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-input"
                   />
                 </div>
 
                 {/* Email */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Email Address</label>
+                  <label className="form-label">Email Address</label>
                   <input
                     type="email"
                     value={profileData.email}
                     onChange={(e) => handleProfileChange('email', e.target.value)}
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-input"
                   />
                 </div>
 
@@ -227,7 +227,7 @@ export const SettingsPage = () => {
                   <button
                     type="button"
                     onClick={() => handleProfileChange('showChangePassword', !profileData.showChangePassword)}
-                    className="flex items-center gap-2 rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-medium text-[#6c7669] shadow-sm hover:bg-[#f9faf8]"
+                    className="btn-secondary flex items-center gap-2"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -239,17 +239,17 @@ export const SettingsPage = () => {
                       <input
                         type="password"
                         placeholder="Current password"
-                        className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                        className="form-input text-sm"
                       />
                       <input
                         type="password"
                         placeholder="New password"
-                        className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                        className="form-input text-sm"
                       />
                       <input
                         type="password"
                         placeholder="Confirm password"
-                        className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                        className="form-input text-sm"
                       />
                     </div>
                   )}
@@ -262,7 +262,7 @@ export const SettingsPage = () => {
               <button
                 onClick={() => handleSave('profile', profileChanges, () => setProfileChanges({}))}
                 disabled={!Object.values(profileChanges).some(v => v)}
-                className="rounded-lg bg-[#77806d] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360] disabled:bg-[#c4cabe] disabled:text-white disabled:cursor-not-allowed"
+                className="btn-primary"
               >
                 Save Changes
               </button>
@@ -277,22 +277,22 @@ export const SettingsPage = () => {
               <div className="space-y-4">
                 {/* App Name */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Application Name</label>
+                  <label className="form-label">Application Name</label>
                   <input
                     type="text"
                     value={systemData.appName}
                     onChange={(e) => handleSystemChange('appName', e.target.value)}
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-input"
                   />
                 </div>
 
                 {/* Default Language */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Default Language</label>
+                  <label className="form-label">Default Language</label>
                   <select
                     value={systemData.defaultLanguage}
                     onChange={(e) => handleSystemChange('defaultLanguage', e.target.value)}
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-select"
                   >
                     <option value="en">English</option>
                     <option value="fil">Filipino</option>
@@ -302,11 +302,11 @@ export const SettingsPage = () => {
 
                 {/* Timezone */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Timezone</label>
+                  <label className="form-label">Timezone</label>
                   <select
                     value={systemData.timezone}
                     onChange={(e) => handleSystemChange('timezone', e.target.value)}
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-select"
                   >
                     <option value="Asia/Manila">Asia/Manila (UTC+8)</option>
                     <option value="Asia/Tokyo">Asia/Tokyo (UTC+9)</option>
@@ -330,7 +330,7 @@ export const SettingsPage = () => {
               <button
                 onClick={() => handleSave('system', systemChanges, () => setSystemChanges({}))}
                 disabled={!Object.values(systemChanges).some(v => v)}
-                className="rounded-lg bg-[#77806d] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360] disabled:bg-[#c4cabe] disabled:text-white disabled:cursor-not-allowed"
+                className="btn-primary"
               >
                 Save Changes
               </button>
@@ -344,7 +344,7 @@ export const SettingsPage = () => {
             <SettingSection title="User Management Settings" description="Control user registration and verification processes">
               <div className="space-y-4">
                 {/* Allow Registration */}
-                <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                <div className="toggle-card">
                   <div>
                     <p className="font-medium text-[#4b5548]">Allow User Registration</p>
                     <p className="text-xs text-[#9aa294]">Enable or disable new user sign-ups</p>
@@ -356,7 +356,7 @@ export const SettingsPage = () => {
                 </div>
 
                 {/* Enable Verification */}
-                <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                <div className="toggle-card">
                   <div>
                     <p className="font-medium text-[#4b5548]">Enable Account Verification</p>
                     <p className="text-xs text-[#9aa294]">Require email verification for new accounts</p>
@@ -368,7 +368,7 @@ export const SettingsPage = () => {
                 </div>
 
                 {/* Auto-suspend */}
-                <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                <div className="toggle-card">
                   <div>
                     <p className="font-medium text-[#4b5548]">Auto-suspend Flagged Users</p>
                     <p className="text-xs text-[#9aa294]">Automatically suspend users with multiple reports</p>
@@ -386,7 +386,7 @@ export const SettingsPage = () => {
               <button
                 onClick={() => handleSave('users', userMgmtChanges, () => setUserMgmtChanges({}))}
                 disabled={!Object.values(userMgmtChanges).some(v => v)}
-                className="rounded-lg bg-[#77806d] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360] disabled:bg-[#c4cabe] disabled:text-white disabled:cursor-not-allowed"
+                className="btn-primary"
               >
                 Save Changes
               </button>
@@ -403,21 +403,21 @@ export const SettingsPage = () => {
                 <div>
                   <h4 className="mb-4 font-medium text-[#4b5548]">Required Documents</h4>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                    <div className="toggle-card">
                       <label className="text-sm font-medium text-[#4b5548]">Business Permit</label>
                       <Toggle
                         checked={orgData.requiredDocs.businessPermit}
                         onChange={(checked) => handleOrgChange('requiredDocs.businessPermit', checked)}
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                    <div className="toggle-card">
                       <label className="text-sm font-medium text-[#4b5548]">Valid ID</label>
                       <Toggle
                         checked={orgData.requiredDocs.validId}
                         onChange={(checked) => handleOrgChange('requiredDocs.validId', checked)}
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                    <div className="toggle-card">
                       <label className="text-sm font-medium text-[#4b5548]">Proof of Legitimacy</label>
                       <Toggle
                         checked={orgData.requiredDocs.proofLegitimacy}
@@ -428,7 +428,7 @@ export const SettingsPage = () => {
                 </div>
 
                 {/* Manual Approval */}
-                <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                <div className="toggle-card">
                   <div>
                     <p className="font-medium text-[#4b5548]">Require Manual Approval</p>
                     <p className="text-xs text-[#9aa294]">All KYC submissions require admin review</p>
@@ -441,12 +441,12 @@ export const SettingsPage = () => {
 
                 {/* Review Guidelines */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Review Guidelines (Optional)</label>
+                  <label className="form-label">Review Guidelines (Optional)</label>
                   <textarea
                     value={orgData.reviewGuidelines}
                     onChange={(e) => handleOrgChange('reviewGuidelines', e.target.value)}
                     rows="4"
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-textarea"
                   />
                 </div>
               </div>
@@ -457,7 +457,7 @@ export const SettingsPage = () => {
               <button
                 onClick={() => handleSave('organization', orgChanges, () => setOrgChanges({}))}
                 disabled={!Object.values(orgChanges).some(v => v)}
-                className="rounded-lg bg-[#77806d] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360] disabled:bg-[#c4cabe] disabled:text-white disabled:cursor-not-allowed"
+                className="btn-primary"
               >
                 Save Changes
               </button>
@@ -471,7 +471,7 @@ export const SettingsPage = () => {
             <SettingSection title="Donation Settings" description="Configure donation features and payment methods">
               <div className="space-y-6">
                 {/* Enable Donations */}
-                <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                <div className="toggle-card">
                   <div>
                     <p className="font-medium text-[#4b5548]">Enable Donations</p>
                     <p className="text-xs text-[#9aa294]">Allow users to make donations</p>
@@ -486,21 +486,21 @@ export const SettingsPage = () => {
                 <div>
                   <h4 className="mb-4 font-medium text-[#4b5548]">Supported Payment Methods</h4>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                    <div className="toggle-card">
                       <label className="text-sm font-medium text-[#4b5548]">GCash</label>
                       <Toggle
                         checked={donationData.paymentMethods.gcash}
                         onChange={(checked) => handleDonationChange('paymentMethods.gcash', checked)}
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                    <div className="toggle-card">
                       <label className="text-sm font-medium text-[#4b5548]">Bank Transfer</label>
                       <Toggle
                         checked={donationData.paymentMethods.bankTransfer}
                         onChange={(checked) => handleDonationChange('paymentMethods.bankTransfer', checked)}
                       />
                     </div>
-                    <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                    <div className="toggle-card">
                       <label className="text-sm font-medium text-[#4b5548]">Card</label>
                       <Toggle
                         checked={donationData.paymentMethods.card}
@@ -512,14 +512,14 @@ export const SettingsPage = () => {
 
                 {/* Minimum Donation */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Minimum Donation Amount (₱)</label>
+                  <label className="form-label">Minimum Donation Amount (₱)</label>
                   <input
                     type="number"
                     value={donationData.minimumAmount}
                     onChange={(e) => handleDonationChange('minimumAmount', e.target.value)}
                     step="0.01"
                     min="0"
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-input"
                   />
                 </div>
               </div>
@@ -530,7 +530,7 @@ export const SettingsPage = () => {
               <button
                 onClick={() => handleSave('donation', donationChanges, () => setDonationChanges({}))}
                 disabled={!Object.values(donationChanges).some(v => v)}
-                className="rounded-lg bg-[#77806d] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360] disabled:bg-[#c4cabe] disabled:text-white disabled:cursor-not-allowed"
+                className="btn-primary"
               >
                 Save Changes
               </button>
@@ -548,7 +548,7 @@ export const SettingsPage = () => {
                   <button
                     type="button"
                     onClick={() => handleSecurityChange('showChangePassword', !securityData.showChangePassword)}
-                    className="flex items-center gap-2 rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-medium text-[#6c7669] shadow-sm hover:bg-[#f9faf8]"
+                    className="btn-secondary flex items-center gap-2"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -560,24 +560,24 @@ export const SettingsPage = () => {
                       <input
                         type="password"
                         placeholder="Current password"
-                        className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                        className="form-input text-sm"
                       />
                       <input
                         type="password"
                         placeholder="New password"
-                        className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                        className="form-input text-sm"
                       />
                       <input
                         type="password"
                         placeholder="Confirm password"
-                        className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                        className="form-input text-sm"
                       />
                     </div>
                   )}
                 </div>
 
                 {/* 2FA */}
-                <div className="flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4">
+                <div className="toggle-card">
                   <div>
                     <p className="font-medium text-[#4b5548]">Two-Factor Authentication</p>
                     <p className="text-xs text-[#9aa294]">Add an extra layer of security</p>
@@ -590,14 +590,14 @@ export const SettingsPage = () => {
 
                 {/* Session Timeout */}
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-[#4b5548]">Session Timeout (minutes)</label>
+                  <label className="form-label">Session Timeout (minutes)</label>
                   <input
                     type="number"
                     value={securityData.sessionTimeout}
                     onChange={(e) => handleSecurityChange('sessionTimeout', e.target.value)}
                     min="5"
                     max="1440"
-                    className="w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    className="form-input"
                   />
                   <p className="mt-1 text-xs text-[#9aa294]">Automatically log out after this period of inactivity</p>
                 </div>
@@ -609,7 +609,7 @@ export const SettingsPage = () => {
               <button
                 onClick={() => handleSave('security', securityChanges, () => setSecurityChanges({}))}
                 disabled={!Object.values(securityChanges).some(v => v)}
-                className="rounded-lg bg-[#77806d] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360] disabled:bg-[#c4cabe] disabled:text-white disabled:cursor-not-allowed"
+                className="btn-primary"
               >
                 Save Changes
               </button>
@@ -634,7 +634,7 @@ export const SettingsPage = () => {
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setShowConfirmation(false)}
-                className="flex items-center justify-center gap-2 flex-1 rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm font-medium text-[#6c7669] shadow-sm hover:bg-[#f9faf8]"
+                className="btn-secondary flex items-center justify-center gap-2 flex-1"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -643,7 +643,7 @@ export const SettingsPage = () => {
               </button>
               <button
                 onClick={confirmSave}
-                className="flex items-center justify-center gap-2 flex-1 rounded-lg bg-[#77806d] px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360]"
+                className="btn-primary flex items-center justify-center gap-2 flex-1"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -680,7 +680,7 @@ const Toggle = ({ checked, onChange }) => {
 // Settings Section Component
 const SettingSection = ({ title, description, children }) => {
   return (
-    <div className="rounded-xl border border-[#e2e6dc] bg-white p-6 shadow-sm">
+    <div className="settings-section">
       <h3 className="text-lg font-semibold text-[#4b5548]">{title}</h3>
       <p className="mt-1 text-sm text-[#9aa294]">{description}</p>
       <div className="mt-6">{children}</div>

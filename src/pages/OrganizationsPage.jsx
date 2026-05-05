@@ -89,9 +89,9 @@ export const OrganizationsPage = () => {
   ];
 
   const statusStyles = {
-    Pending: 'bg-[#f8efd1] text-[#9a7a1f]',
-    Approved: 'bg-[#e8f3ea] text-[#2f7a43]',
-    Rejected: 'bg-[#fbe9e9] text-[#b83a3a]'
+    Pending: 'badge badge-pending',
+    Approved: 'badge badge-active',
+    Rejected: 'badge badge-rejected'
   };
 
   const handleApprove = (application) => {
@@ -106,14 +106,14 @@ export const OrganizationsPage = () => {
 
   return (
     <Layout title="Organizations">
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <div className="card-lg">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-[#4b5548]">Organization Applications</h2>
-            <p className="mt-1 text-sm text-[#7a8476]">Total: 65</p>
+            <h2 className="section-title">Organization Applications</h2>
+            <p className="section-subtitle">Total: 65</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm">
+            <button className="btn-outline">
               Export
             </button>
           </div>
@@ -124,7 +124,7 @@ export const OrganizationsPage = () => {
             <input
               type="text"
               placeholder="Search organization or email"
-              className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
+              className="input-search"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -133,9 +133,9 @@ export const OrganizationsPage = () => {
               </svg>
             </span>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Status</span>
-            <select className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none">
+          <div className="filter-pill">
+            <span className="filter-label">Status</span>
+            <select className="filter-select">
               <option>All</option>
               <option>Pending</option>
               <option>Approved</option>
@@ -144,8 +144,8 @@ export const OrganizationsPage = () => {
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-[#e6eadf]">
-          <div className="grid grid-cols-[0.5fr_1fr_1.5fr_2fr_1fr_1fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+        <div className="table-wrap">
+          <div className="grid grid-cols-[0.5fr_1fr_1.5fr_2fr_1fr_1fr_7rem] items-center gap-2 table-head">
             <span>
               <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
             </span>
@@ -159,25 +159,25 @@ export const OrganizationsPage = () => {
           {applications.map((row, index) => (
             <div
               key={`${row.id}-${index}`}
-              className="grid grid-cols-[0.5fr_1fr_1.5fr_2fr_1fr_1fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
+              className="grid grid-cols-[0.5fr_1fr_1.5fr_2fr_1fr_1fr_7rem] items-center gap-2 table-row"
               onClick={() => setSelectedApplication(row)}
             >
               <span onClick={(event) => event.stopPropagation()}>
                 <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
               </span>
-              <span className="text-xs font-semibold text-[#9aa294]">{row.id}</span>
+              <span className="table-id">{row.id}</span>
               <span className="font-medium text-[#4b5548]">{row.name}</span>
               <div>
                 <p className="font-semibold text-[#4b5548]">{row.contactName}</p>
-                <p className="text-xs text-[#9aa294]">{row.contactEmail}</p>
+                <p className="table-muted">{row.contactEmail}</p>
               </div>
-              <span className="text-xs text-[#9aa294]">{row.applied}</span>
-              <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[row.status]}`}>
+              <span className="table-muted">{row.applied}</span>
+              <span className={statusStyles[row.status]}>
                 {row.status}
               </span>
               <div className="flex items-center justify-center gap-2 text-[#77806d]" onClick={(event) => event.stopPropagation()}>
                 <button
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc] transition hover:bg-[#f3f5ef]"
+                  className="icon-btn"
                   title="View application"
                   onClick={() => setSelectedApplication(row)}
                 >
@@ -194,22 +194,22 @@ export const OrganizationsPage = () => {
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
           <span>Showing 1-5 of 65 applications</span>
           <div className="flex items-center gap-2">
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">Prev</button>
-            <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">1</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">2</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">3</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">Next</button>
+            <button className="btn-page">Prev</button>
+            <button className="btn-page-active">1</button>
+            <button className="btn-page">2</button>
+            <button className="btn-page">3</button>
+            <button className="btn-page">Next</button>
           </div>
         </div>
       </div>
 
       {selectedApplication && (
         <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6"
+          className="modal-overlay"
           onClick={() => setSelectedApplication(null)}
         >
           <div
-            className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl"
+            className="modal-card max-w-2xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -218,7 +218,7 @@ export const OrganizationsPage = () => {
                 <h3 className="mt-2 text-xl font-semibold text-[#4b5548]">{selectedApplication.name}</h3>
                 <p className="text-sm text-[#7a8476]">{selectedApplication.location}</p>
               </div>
-              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[selectedApplication.status]}`}>
+              <span className={statusStyles[selectedApplication.status]}>
                 {selectedApplication.status}
               </span>
             </div>
@@ -259,7 +259,7 @@ export const OrganizationsPage = () => {
                       </div>
                       <button
                         type="button"
-                        className="rounded-full border border-[#e2e6dc] px-3 py-1 text-xs font-semibold text-[#6c7669] transition hover:bg-[#f3f5ef]"
+                        className="btn-pill-outline-sm"
                         onClick={() => setSelectedDocument(document)}
                       >
                         View
@@ -271,14 +271,14 @@ export const OrganizationsPage = () => {
                 <div className="mt-5 flex items-center gap-3">
                   <button
                     type="button"
-                    className="flex-1 rounded-full bg-[#77806d] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95"
+                    className="btn-pill-primary flex-1"
                     onClick={() => handleApprove(selectedApplication)}
                   >
                     Accept
                   </button>
                   <button
                     type="button"
-                    className="flex-1 rounded-full border border-[#e2e6dc] px-4 py-2 text-sm font-semibold text-[#a25d5d] transition hover:bg-[#fbe9e9]"
+                    className="btn-pill-danger flex-1"
                     onClick={() => handleReject(selectedApplication)}
                   >
                     Reject
@@ -290,7 +290,7 @@ export const OrganizationsPage = () => {
             <div className="mt-6 flex items-center justify-end">
               <button
                 type="button"
-                className="rounded-full border border-[#e2e6dc] px-4 py-2 text-sm font-semibold text-[#6c7669] transition hover:bg-[#f3f5ef]"
+                className="btn-outline"
                 onClick={() => setSelectedApplication(null)}
               >
                 Close
@@ -302,11 +302,11 @@ export const OrganizationsPage = () => {
 
       {selectedDocument && (
         <div
-          className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4 py-6"
+          className="modal-overlay z-40 bg-black/50"
           onClick={() => setSelectedDocument(null)}
         >
           <div
-            className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl"
+            className="modal-card max-w-lg"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -317,7 +317,7 @@ export const OrganizationsPage = () => {
               </div>
               <button
                 type="button"
-                className="rounded-full border border-[#e2e6dc] px-3 py-1 text-xs font-semibold text-[#6c7669] transition hover:bg-[#f3f5ef]"
+                className="btn-pill-outline-sm"
                 onClick={() => setSelectedDocument(null)}
               >
                 Close
@@ -342,13 +342,13 @@ export const OrganizationsPage = () => {
             <div className="mt-6 flex items-center gap-3">
               <button
                 type="button"
-                className="flex-1 rounded-full bg-[#77806d] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95"
+                className="btn-pill-primary flex-1"
               >
                 Open Document
               </button>
               <button
                 type="button"
-                className="flex-1 rounded-full border border-[#e2e6dc] px-4 py-2 text-sm font-semibold text-[#6c7669] transition hover:bg-[#f3f5ef]"
+                className="btn-outline flex-1"
                 onClick={() => setSelectedDocument(null)}
               >
                 Back

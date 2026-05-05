@@ -53,14 +53,14 @@ export const ReportsPage = () => {
 
   return (
     <Layout title="Reports">
-      <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <div className="card-lg">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-[#4b5548]">Reports Overview</h2>
-            <p className="mt-1 text-sm text-[#7a8476]">Total reports: 392</p>
+            <h2 className="section-title">Reports Overview</h2>
+            <p className="section-subtitle">Total reports: 392</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm">
+            <button className="btn-outline">
               Export
             </button>
           </div>
@@ -71,7 +71,7 @@ export const ReportsPage = () => {
             <input
               type="text"
               placeholder="Search by title, description, or user"
-              className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
+              className="input-search"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -80,17 +80,17 @@ export const ReportsPage = () => {
               </svg>
             </span>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Status</span>
-            <select className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none">
+          <div className="filter-pill">
+            <span className="filter-label">Status</span>
+            <select className="filter-select">
               <option>All</option>
               <option>Active</option>
               <option>Flagged</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Date</span>
-            <select className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none">
+          <div className="filter-pill">
+            <span className="filter-label">Date</span>
+            <select className="filter-select">
               <option>Any time</option>
               <option>Last 7 days</option>
               <option>Last 30 days</option>
@@ -98,8 +98,8 @@ export const ReportsPage = () => {
           </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-[#e6eadf]">
-          <div className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+        <div className="table-wrap">
+          <div className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-head">
             <span>
               <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
             </span>
@@ -114,17 +114,17 @@ export const ReportsPage = () => {
           {reports.map((report, index) => (
             <div
               key={`${report.id}-${index}`}
-              className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
+              className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-row"
             >
               <span>
                 <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
               </span>
-              <span className="text-xs font-semibold text-[#9aa294]">{report.id}</span>
+              <span className="table-id">{report.id}</span>
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
                 <div>
                   <p className="font-semibold text-[#4b5548]">{report.user}</p>
-                  <p className="text-xs text-[#9aa294]">User</p>
+                  <p className="table-muted">User</p>
                 </div>
               </div>
               <button
@@ -136,19 +136,15 @@ export const ReportsPage = () => {
                 <p className="text-xs text-[#9aa294] line-clamp-1">{report.description}</p>
               </button>
               <span className="text-sm text-[#7a8476]">{report.category}</span>
-              <span className="text-xs text-[#9aa294]">{report.date}</span>
+              <span className="table-muted">{report.date}</span>
               <span
-                className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                  report.status === 'Active'
-                    ? 'bg-[#e8f3ea] text-[#2f7a43]'
-                    : 'bg-[#fbe9e9] text-[#b83a3a]'
-                }`}
+                className={`badge ${report.status === 'Active' ? 'badge-active' : 'badge-flagged'}`}
               >
                 {report.status}
               </span>
               <div className="flex items-center justify-center gap-2 text-[#77806d]">
                 <button
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc]"
+                  className="icon-btn"
                   title="View report"
                   onClick={() => setSelectedReport(report)}
                 >
@@ -157,7 +153,7 @@ export const ReportsPage = () => {
                     <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
                   </svg>
                 </button>
-                <button className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc] text-[#a25d5d]" title="Delete report">
+                <button className="icon-btn text-[#a25d5d]" title="Delete report">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                     <path d="M4 7h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                     <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="1.6" />
@@ -172,13 +168,13 @@ export const ReportsPage = () => {
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
           <span>Showing 1-5 of 392 reports</span>
           <div className="flex items-center gap-2">
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
+            <button className="btn-page">
               Prev
             </button>
-            <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">1</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">2</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">3</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
+            <button className="btn-page-active">1</button>
+            <button className="btn-page">2</button>
+            <button className="btn-page">3</button>
+            <button className="btn-page">
               Next
             </button>
           </div>
@@ -186,11 +182,11 @@ export const ReportsPage = () => {
       </div>
       {selectedReport && (
         <div
-          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6"
+          className="modal-overlay"
           onClick={() => setSelectedReport(null)}
         >
           <div
-            className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl"
+            className="modal-card max-w-xl"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -221,11 +217,7 @@ export const ReportsPage = () => {
               <div className="flex items-center justify-between">
                 <span className="text-[#9aa294]">Status</span>
                 <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                    selectedReport.status === 'Active'
-                      ? 'bg-[#e8f3ea] text-[#2f7a43]'
-                      : 'bg-[#fbe9e9] text-[#b83a3a]'
-                  }`}
+                  className={`badge ${selectedReport.status === 'Active' ? 'badge-active' : 'badge-flagged'}`}
                 >
                   {selectedReport.status}
                 </span>
@@ -235,7 +227,7 @@ export const ReportsPage = () => {
             <div className="mt-6 flex items-center justify-end">
               <button
                 type="button"
-                className="rounded-full border border-[#e2e6dc] px-4 py-2 text-sm font-semibold text-[#6c7669]"
+                className="btn-outline"
                 onClick={() => setSelectedReport(null)}
               >
                 Close

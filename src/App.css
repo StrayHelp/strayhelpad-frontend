@@ -8,3 +8,152 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+.card-lg {
+  @apply rounded-2xl bg-white p-6 shadow-sm;
+}
+
+.card-md {
+  @apply rounded-2xl bg-white p-5 shadow-sm;
+}
+
+.section-title {
+  @apply text-2xl font-semibold text-[#4b5548];
+}
+
+.section-subtitle {
+  @apply mt-1 text-sm text-[#7a8476];
+}
+
+.btn-outline {
+  @apply rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm;
+}
+
+.btn-pill-muted {
+  @apply rounded-full bg-[#e6eadf] px-3 py-1 text-xs font-semibold text-[#6c7669];
+}
+
+.btn-page {
+  @apply rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669];
+}
+
+.btn-page-active {
+  @apply rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white;
+}
+
+.input-search {
+  @apply w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm;
+}
+
+.filter-pill {
+  @apply flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm;
+}
+
+.filter-label {
+  @apply text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294];
+}
+
+.filter-select {
+  @apply bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none;
+}
+
+.table-wrap {
+  @apply mt-6 overflow-hidden rounded-2xl border border-[#e6eadf];
+}
+
+.table-head {
+  @apply bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476];
+}
+
+.table-row {
+  @apply border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8];
+}
+
+.table-id {
+  @apply text-xs font-semibold text-[#9aa294];
+}
+
+.table-muted {
+  @apply text-xs text-[#9aa294];
+}
+
+.badge {
+  @apply inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold;
+}
+
+.badge-active {
+  @apply bg-[#e8f3ea] text-[#2f7a43];
+}
+
+.badge-flagged,
+.badge-rejected {
+  @apply bg-[#fbe9e9] text-[#b83a3a];
+}
+
+.badge-pending {
+  @apply bg-[#f8efd1] text-[#9a7a1f];
+}
+
+.badge-neutral {
+  @apply inline-flex items-center rounded-full bg-[#eef1e9] px-3 py-1 text-xs font-semibold text-[#6c7669];
+}
+
+.icon-btn {
+  @apply inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc] transition hover:bg-[#f3f5ef];
+}
+
+.modal-overlay {
+  @apply fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6;
+}
+
+.modal-card {
+  @apply w-full rounded-2xl bg-white p-6 shadow-xl;
+}
+
+.form-label {
+  @apply mb-2 block text-sm font-medium text-[#4b5548];
+}
+
+.form-input {
+  @apply w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d];
+}
+
+.form-select {
+  @apply w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d];
+}
+
+.form-textarea {
+  @apply w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d];
+}
+
+.btn-primary {
+  @apply rounded-lg bg-[#77806d] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#6b7360];
+}
+
+.btn-primary:disabled {
+  @apply cursor-not-allowed bg-[#c4cabe] text-white;
+}
+
+.btn-secondary {
+  @apply rounded-lg border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-medium text-[#6c7669] shadow-sm hover:bg-[#f9faf8];
+}
+
+.btn-pill-primary {
+  @apply rounded-full bg-[#77806d] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95;
+}
+
+.btn-pill-danger {
+  @apply rounded-full border border-[#e2e6dc] px-4 py-2 text-sm font-semibold text-[#a25d5d] transition hover:bg-[#fbe9e9];
+}
+
+.btn-pill-outline-sm {
+  @apply rounded-full border border-[#e2e6dc] px-3 py-1 text-xs font-semibold text-[#6c7669] transition hover:bg-[#f3f5ef];
+}
+
+.settings-section {
+  @apply rounded-xl border border-[#e2e6dc] bg-white p-6 shadow-sm;
+}
+
+.toggle-card {
+  @apply flex items-center justify-between rounded-lg border border-[#e2e6dc] bg-white p-4;
+}
