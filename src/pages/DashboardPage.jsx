@@ -182,6 +182,49 @@ export const DashboardPage = () => {
               ))}
             </div>
           </div>
+
+          <div className="card-lg lg:col-span-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-[#4b5548]">Logging & Monitoring</h2>
+              <div className="flex items-center gap-2">
+                <button className="btn-pill-muted">
+                  View logs
+                </button>
+                <button className="btn-pill-muted">
+                  Download CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1.8fr]">
+              <div className="rounded-2xl border border-[#e2e6dc] bg-[#fafaf8] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#9aa294]">Secure Audit Logging</p>
+                <p className="mt-3 text-sm text-[#5a6457]">
+                  Transaction events, admin actions, and system changes are captured with tamper-evident hashing.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[#6c7669]">
+                  <span className="rounded-full border border-[#e2e6dc] bg-white px-3 py-1">Retention: 365 days</span>
+                  <span className="rounded-full border border-[#e2e6dc] bg-white px-3 py-1">AES-256 at rest</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {[
+                  { title: 'Donation payout verified', meta: 'Payments service · 2 minutes ago', status: 'Verified' },
+                  { title: 'New admin role granted', meta: 'Access control · 18 minutes ago', status: 'Reviewed' },
+                  { title: 'System alert resolved', meta: 'Monitoring · 1 hour ago', status: 'Resolved' }
+                ].map((logItem, index) => (
+                  <div key={`${logItem.title}-${index}`} className="flex items-center justify-between rounded-2xl border border-[#e2e6dc] bg-white px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#4b5548]">{logItem.title}</p>
+                      <p className="text-xs text-[#9aa294]">{logItem.meta}</p>
+                    </div>
+                    <span className="badge-neutral">{logItem.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
