@@ -3,6 +3,8 @@ import { Layout } from '../components/Layout';
 
 export const ReportsPage = () => {
   const [selectedReport, setSelectedReport] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [actionToast, setActionToast] = useState('');
   const reports = [
     {
       id: 'RPT-2041',
@@ -51,8 +53,21 @@ export const ReportsPage = () => {
     }
   ];
 
+  const showActionToast = (message) => {
+    setActionToast(message);
+    setTimeout(() => setActionToast(''), 3000);
+  };
+
   return (
     <Layout title="Reports">
+      {actionToast && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          {actionToast}
+        </div>
+      )}
       <div className="card-lg">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -153,11 +168,17 @@ export const ReportsPage = () => {
                     <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
                   </svg>
                 </button>
-                <button className="icon-btn text-[#a25d5d]" title="Delete report">
+                <button
+                  className="icon-btn text-[#a25d5d]"
+                  title="Delete report"
+                  onClick={() => setDeleteConfirm(report)}
+                >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                     <path d="M4 7h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" stroke="currentColor" strokeWidth="1.6" />
+                    <path d="M10 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    <path d="M14 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
                 </button>
               </div>
@@ -227,10 +248,64 @@ export const ReportsPage = () => {
             <div className="mt-6 flex items-center justify-end">
               <button
                 type="button"
+                className={selectedReport.status === 'Flagged' ? 'btn-outline mr-3' : 'btn-pill-danger mr-3'}
+                onClick={() => {
+                  const action = selectedReport.status === 'Flagged' ? 'unflagged' : 'flagged';
+                  showActionToast(`✓ Report ${action}`);
+                  setSelectedReport(null);
+                }}
+              >
+                {selectedReport.status === 'Flagged' ? 'Unflag Report' : 'Flag Report'}
+              </button>
+              <button
+                type="button"
                 className="btn-outline"
                 onClick={() => setSelectedReport(null)}
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {deleteConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fbe9e9] text-[#b83a3a]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M12 17h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">Delete report?</h3>
+                <p className="text-sm text-[#9aa294]">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">Report:</span> {deleteConfirm.title} ({deleteConfirm.id})
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-pill-danger flex-1"
+                onClick={() => {
+                  showActionToast('✓ Report deleted');
+                  setDeleteConfirm(null);
+                }}
+              >
+                Delete
               </button>
             </div>
           </div>

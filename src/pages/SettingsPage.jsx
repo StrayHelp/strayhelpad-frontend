@@ -6,6 +6,9 @@ export const SettingsPage = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [restoreConfirm, setRestoreConfirm] = useState(null);
+  const [recycleToast, setRecycleToast] = useState('');
 
   // Profile Settings
   const [profileData, setProfileData] = useState({
@@ -65,6 +68,66 @@ export const SettingsPage = () => {
   });
   const [securityChanges, setSecurityChanges] = useState({});
 
+  const deletedUsers = [
+    {
+      id: 'USR-0942',
+      name: 'Lina Porter',
+      email: 'lina.porter@strayhelp.org',
+      deleted: 'Apr 30, 2026'
+    },
+    {
+      id: 'USR-0931',
+      name: 'Gavin Cruz',
+      email: 'gavin.cruz@strayhelp.org',
+      deleted: 'Apr 27, 2026'
+    }
+  ];
+
+  const deletedOrganizations = [
+    {
+      id: 'ORG-1720',
+      name: 'Northside Rescue',
+      contactEmail: 'hello@northsiderescue.org',
+      deleted: 'Apr 29, 2026'
+    },
+    {
+      id: 'ORG-1714',
+      name: 'Care & Paws PH',
+      contactEmail: 'admin@careandpaws.ph',
+      deleted: 'Apr 26, 2026'
+    }
+  ];
+
+  const deletedReports = [
+    {
+      id: 'RPT-1908',
+      title: 'Injured dog near terminal',
+      category: 'Rescue',
+      deleted: 'Apr 28, 2026'
+    },
+    {
+      id: 'RPT-1903',
+      title: 'Abandoned kitten box',
+      category: 'Found Stray',
+      deleted: 'Apr 25, 2026'
+    }
+  ];
+
+  const deletedDonationDrives = [
+    {
+      id: 'DRV-1402',
+      title: 'Emergency Food Kits',
+      organization: 'Safe Paws Shelter',
+      deleted: 'Apr 29, 2026'
+    },
+    {
+      id: 'DRV-1396',
+      title: 'Spay & Neuter Fund',
+      organization: 'Metro Rescue Team',
+      deleted: 'Apr 26, 2026'
+    }
+  ];
+
   // Handlers
   const handleProfileChange = (field, value) => {
     setProfileData(prev => ({ ...prev, [field]: value }));
@@ -119,6 +182,11 @@ export const SettingsPage = () => {
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
+  const showRecycleToast = (message) => {
+    setRecycleToast(message);
+    setTimeout(() => setRecycleToast(''), 3000);
+  };
+
   const handleSave = (tab, changes, resetChanges) => {
     if (Object.values(changes).some(v => v)) {
       setConfirmAction({ tab, resetChanges });
@@ -135,6 +203,36 @@ export const SettingsPage = () => {
     setConfirmAction(null);
   };
 
+  const openDeleteConfirm = (item) => {
+    setDeleteConfirm(item);
+  };
+
+  const closeDeleteConfirm = () => {
+    setDeleteConfirm(null);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm) {
+      showRecycleToast(`✓ ${deleteConfirm.type} deleted forever`);
+    }
+    setDeleteConfirm(null);
+  };
+
+  const openRestoreConfirm = (item) => {
+    setRestoreConfirm(item);
+  };
+
+  const closeRestoreConfirm = () => {
+    setRestoreConfirm(null);
+  };
+
+  const confirmRestore = () => {
+    if (restoreConfirm) {
+      showRecycleToast(`✓ ${restoreConfirm.type} restored`);
+    }
+    setRestoreConfirm(null);
+  };
+
   // Tabs Configuration
   const tabs = [
     { id: 'profile', label: 'Profile', icon: 'profile' },
@@ -143,6 +241,7 @@ export const SettingsPage = () => {
     { id: 'organization', label: 'Organization', icon: 'organization' },
     { id: 'donation', label: 'Donations', icon: 'donations' },
     { id: 'security', label: 'Security', icon: 'security' },
+    { id: 'recycle', label: 'Recycle Bin', icon: 'deleted' },
   ];
 
   return (
@@ -155,6 +254,15 @@ export const SettingsPage = () => {
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
             {successMessage}
+          </div>
+        )}
+
+        {recycleToast && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            {recycleToast}
           </div>
         )}
 
@@ -616,6 +724,220 @@ export const SettingsPage = () => {
             </div>
           </div>
         )}
+
+        {/* Deleted Accounts */}
+        {activeTab === 'recycle' && (
+          <div className="space-y-6">
+            <SettingSection title="Recycle Bin" description="Manage deleted users, organizations, and reports">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Users</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 12</span>
+                  </div>
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
+                    <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+                      <span>User ID</span>
+                      <span>Profile</span>
+                      <span>Type</span>
+                      <span>Date Deleted</span>
+                      <span className="pr-2 text-right">Actions</span>
+                    </div>
+                    {deletedUsers.map((user, index) => (
+                      <div
+                        key={`${user.id}-${index}`}
+                        className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
+                      >
+                        <span className="text-xs font-semibold text-[#9aa294]">{user.id}</span>
+                        <div>
+                          <p className="font-semibold text-[#4b5548]">{user.name}</p>
+                          <p className="text-xs text-[#9aa294]">{user.email}</p>
+                        </div>
+                        <span className="text-xs text-[#9aa294]">User</span>
+                        <span className="text-xs text-[#9aa294]">{user.deleted}</span>
+                        <div className="flex items-center justify-end gap-2 pr-2">
+                          <button
+                            className="btn-outline px-3 py-1 text-xs"
+                            onClick={() => openRestoreConfirm({
+                              type: 'User',
+                              name: user.name,
+                              id: user.id
+                            })}
+                          >
+                            Restore
+                          </button>
+                          <button
+                            className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
+                            onClick={() => openDeleteConfirm({
+                              type: 'User',
+                              name: user.name,
+                              id: user.id
+                            })}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Organizations</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 6</span>
+                  </div>
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
+                    <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+                      <span>Org ID</span>
+                      <span>Organization</span>
+                      <span>Type</span>
+                      <span>Date Deleted</span>
+                      <span className="pr-2 text-right">Actions</span>
+                    </div>
+                    {deletedOrganizations.map((org, index) => (
+                      <div
+                        key={`${org.id}-${index}`}
+                        className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
+                      >
+                        <span className="text-xs font-semibold text-[#9aa294]">{org.id}</span>
+                        <div>
+                          <p className="font-semibold text-[#4b5548]">{org.name}</p>
+                          <p className="text-xs text-[#9aa294]">{org.contactEmail}</p>
+                        </div>
+                        <span className="text-xs text-[#9aa294]">Organization</span>
+                        <span className="text-xs text-[#9aa294]">{org.deleted}</span>
+                        <div className="flex items-center justify-end gap-2 pr-2">
+                          <button
+                            className="btn-outline px-3 py-1 text-xs"
+                            onClick={() => openRestoreConfirm({
+                              type: 'Organization',
+                              name: org.name,
+                              id: org.id
+                            })}
+                          >
+                            Restore
+                          </button>
+                          <button
+                            className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
+                            onClick={() => openDeleteConfirm({
+                              type: 'Organization',
+                              name: org.name,
+                              id: org.id
+                            })}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Reports</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 9</span>
+                  </div>
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
+                    <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+                      <span>Report ID</span>
+                      <span>Report</span>
+                      <span>Category</span>
+                      <span>Date Deleted</span>
+                      <span className="pr-2 text-right">Actions</span>
+                    </div>
+                    {deletedReports.map((report, index) => (
+                      <div
+                        key={`${report.id}-${index}`}
+                        className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
+                      >
+                        <span className="text-xs font-semibold text-[#9aa294]">{report.id}</span>
+                        <p className="font-semibold text-[#4b5548]">{report.title}</p>
+                        <span className="text-xs text-[#9aa294]">{report.category}</span>
+                        <span className="text-xs text-[#9aa294]">{report.deleted}</span>
+                        <div className="flex items-center justify-end gap-2 pr-2">
+                          <button
+                            className="btn-outline px-3 py-1 text-xs"
+                            onClick={() => openRestoreConfirm({
+                              type: 'Report',
+                              name: report.title,
+                              id: report.id
+                            })}
+                          >
+                            Restore
+                          </button>
+                          <button
+                            className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
+                            onClick={() => openDeleteConfirm({
+                              type: 'Report',
+                              name: report.title,
+                              id: report.id
+                            })}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Donation Drives</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 5</span>
+                  </div>
+                  <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
+                    <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+                      <span>Drive ID</span>
+                      <span>Donation Drive</span>
+                      <span>Type</span>
+                      <span>Date Deleted</span>
+                      <span className="pr-2 text-right">Actions</span>
+                    </div>
+                    {deletedDonationDrives.map((drive, index) => (
+                      <div
+                        key={`${drive.id}-${index}`}
+                        className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
+                      >
+                        <span className="text-xs font-semibold text-[#9aa294]">{drive.id}</span>
+                        <div>
+                          <p className="font-semibold text-[#4b5548]">{drive.title}</p>
+                          <p className="text-xs text-[#9aa294]">{drive.organization}</p>
+                        </div>
+                        <span className="text-xs text-[#9aa294]">Donation drive</span>
+                        <span className="text-xs text-[#9aa294]">{drive.deleted}</span>
+                        <div className="flex items-center justify-end gap-2 pr-2">
+                          <button
+                            className="btn-outline px-3 py-1 text-xs"
+                            onClick={() => openRestoreConfirm({
+                              type: 'Donation drive',
+                              name: drive.title,
+                              id: drive.id
+                            })}
+                          >
+                            Restore
+                          </button>
+                          <button
+                            className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
+                            onClick={() => openDeleteConfirm({
+                              type: 'Donation drive',
+                              name: drive.title,
+                              id: drive.id
+                            })}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </SettingSection>
+          </div>
+        )}
       </div>
 
       {/* Confirmation Modal */}
@@ -649,6 +971,87 @@ export const SettingsPage = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fbe9e9] text-[#b83a3a]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M12 17h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">Delete forever?</h3>
+                <p className="text-sm text-[#9aa294]">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">{deleteConfirm.type}:</span> {deleteConfirm.name} ({deleteConfirm.id})
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={closeDeleteConfirm}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-pill-danger flex-1"
+                onClick={confirmDelete}
+              >
+                Delete forever
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {restoreConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8f3ea] text-[#2f7a43]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M3 12a9 9 0 1 0 3-6.7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M3 4v6h6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">Restore account?</h3>
+                <p className="text-sm text-[#9aa294]">This will return the item to its active list.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">{restoreConfirm.type}:</span> {restoreConfirm.name} ({restoreConfirm.id})
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={closeRestoreConfirm}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-pill-primary flex-1"
+                onClick={confirmRestore}
+              >
+                Restore
               </button>
             </div>
           </div>
@@ -743,6 +1146,16 @@ const TabIcon = ({ type }) => {
       return (
         <svg {...iconProps} aria-hidden="true">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+      );
+    case 'deleted':
+      return (
+        <svg {...iconProps} aria-hidden="true">
+          <path d="M9 3h6" />
+          <path d="M10 8v8" />
+          <path d="M14 8v8" />
+          <path d="M4 6h16" />
+          <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" />
         </svg>
       );
     default:

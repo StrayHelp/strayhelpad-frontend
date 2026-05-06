@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Layout } from '../components/Layout';
 
 export const UsersPage = () => {
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [suspendConfirm, setSuspendConfirm] = useState(null);
+  const [actionToast, setActionToast] = useState('');
   const users = [
     {
       id: 'USR-1024',
@@ -40,8 +43,21 @@ export const UsersPage = () => {
     }
   ];
 
+  const showActionToast = (message) => {
+    setActionToast(message);
+    setTimeout(() => setActionToast(''), 3000);
+  };
+
   return (
     <Layout title="Users">
+      {actionToast && (
+        <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+          <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+          </svg>
+          {actionToast}
+        </div>
+      )}
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -118,15 +134,20 @@ export const UsersPage = () => {
               <span className="text-xs text-[#9aa294]">{user.joined}</span>
               <div className="flex items-center justify-center gap-2 text-[#77806d]">
                 <button
-                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc]"
+                  className="icon-btn"
                   title={user.status === 'Active' ? 'Suspend user' : 'Activate user'}
+                  onClick={() => setSuspendConfirm(user)}
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                     <path d="M12 2v20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                     <path d="M5 7h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>
                 </button>
-                <button className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc]" title="Delete user">
+                <button
+                  className="icon-btn text-[#a25d5d]"
+                  title="Delete user"
+                  onClick={() => setDeleteConfirm(user)}
+                >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                     <path d="M4 7h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                     <path d="M10 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -155,6 +176,95 @@ export const UsersPage = () => {
           </div>
         </div>
       </div>
+      {deleteConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fbe9e9] text-[#b83a3a]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M12 17h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">Delete user?</h3>
+                <p className="text-sm text-[#9aa294]">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">User:</span> {deleteConfirm.name} ({deleteConfirm.id})
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={() => setDeleteConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-pill-danger flex-1"
+                onClick={() => {
+                  showActionToast('✓ User deleted');
+                  setDeleteConfirm(null);
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {suspendConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f8efd1] text-[#9a7a1f]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 8v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M12 16h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">
+                  {suspendConfirm.status === 'Active' ? 'Suspend user?' : 'Activate user?'}
+                </h3>
+                <p className="text-sm text-[#9aa294]">You can change this status again later.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">User:</span> {suspendConfirm.name} ({suspendConfirm.id})
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={() => setSuspendConfirm(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-pill-primary flex-1"
+                onClick={() => {
+                  const nextAction = suspendConfirm.status === 'Active' ? 'suspended' : 'activated';
+                  showActionToast(`✓ User ${nextAction}`);
+                  setSuspendConfirm(null);
+                }}
+              >
+                {suspendConfirm.status === 'Active' ? 'Suspend' : 'Activate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Layout>
   );
 };
