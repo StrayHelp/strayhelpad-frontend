@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import strayHelpLogo from '../assets/StrayHelp-Logo-2.png';
+import { login } from '../services/authService';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const formatAdminName = (value) => {
-    if (!value) {
-      return 'Admin User';
-    }
-
+    if (!value) return 'Admin User';
     const namePart = value.split('@')[0] || value;
     return namePart
       .replace(/[._-]+/g, ' ')
@@ -22,14 +22,26 @@ export const LoginPage = () => {
       .join(' ');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const normalizedEmail = email.trim();
-    const adminName = formatAdminName(normalizedEmail);
+    setLoading(true);
+    setError(null);
 
-    window.localStorage.setItem('adminName', adminName);
-    window.localStorage.setItem('adminEmail', normalizedEmail);
-    navigate('/dashboard');
+    try {
+      const normalizedEmail = email.trim();
+      const response = await login(normalizedEmail, password);
+      const adminName = response.user?.name || formatAdminName(normalizedEmail);
+
+      window.localStorage.setItem('authToken', response.token);
+      window.localStorage.setItem('adminName', adminName);
+      window.localStorage.setItem('adminEmail', response.user?.email || normalizedEmail);
+
+      navigate('/dashboard');
+    } catch (loginError) {
+      setError(loginError.response?.data?.message || loginError.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -75,6 +87,11 @@ export const LoginPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {error && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {error}
+                </div>
+              )}
               <div>
                 <label className="mb-2 block text-sm font-medium text-white">Email Address</label>
                 <input
@@ -108,9 +125,10 @@ export const LoginPage = () => {
 
               <button
                 type="submit"
-                className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#77806d] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_12px_28px_rgba(0,0,0,0.14)]"
+                disabled={loading}
+                className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#77806d] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_12px_28px_rgba(0,0,0,0.14)] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                Sign In
+                {loading ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
 

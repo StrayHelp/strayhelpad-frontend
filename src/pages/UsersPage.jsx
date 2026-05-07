@@ -1,47 +1,37 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { fetchUsers } from '../services/adminService';
 
 export const UsersPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [suspendConfirm, setSuspendConfirm] = useState(null);
   const [actionToast, setActionToast] = useState('');
-  const users = [
-    {
-      id: 'USR-1024',
-      name: 'Maya Sinclair',
-      email: 'maya.sinclair@strayhelp.org',
-      status: 'Active',
-      joined: 'Apr 18, 2026'
-    },
-    {
-      id: 'USR-1023',
-      name: 'Jonas Reed',
-      email: 'jonas.reed@strayhelp.org',
-      status: 'Suspended',
-      joined: 'Apr 16, 2026'
-    },
-    {
-      id: 'USR-1022',
-      name: 'Annie Clarke',
-      email: 'annie.clarke@strayhelp.org',
-      status: 'Active',
-      joined: 'Apr 14, 2026'
-    },
-    {
-      id: 'USR-1021',
-      name: 'Carlos Mendez',
-      email: 'carlos.mendez@strayhelp.org',
-      status: 'Active',
-      joined: 'Apr 12, 2026'
-    },
-    {
-      id: 'USR-1020',
-      name: 'Jamie Ford',
-      email: 'jamie.ford@strayhelp.org',
-      status: 'Suspended',
-      joined: 'Apr 10, 2026'
-    }
-  ];
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchUsers();
+        setUsers(data.map((user) => ({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          status: user.account_status || 'Active',
+          joined: new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        })));
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Unable to load users');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadUsers();
+  }, []);
 
   const showActionToast = (message) => {
     setActionToast(message);
@@ -62,7 +52,7 @@ export const UsersPage = () => {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-[#4b5548]">User Directory</h2>
-            <p className="mt-1 text-sm text-[#7a8476]">Total users: 1,284</p>
+            <p className="mt-1 text-sm text-[#7a8476]">Total users: {users.length}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm">
@@ -95,6 +85,10 @@ export const UsersPage = () => {
           </div>
         </div>
 
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
         <div className="mt-6 overflow-hidden rounded-2xl border border-[#e6eadf]">
           <div className="grid grid-cols-[0.5fr_1fr_2.4fr_1fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
             <span>
@@ -106,7 +100,11 @@ export const UsersPage = () => {
             <span>Date Joined</span>
             <span className="text-center">Actions</span>
           </div>
-          {users.map((user, index) => (
+          {loading ? (
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading users…</div>
+          ) : users.length === 0 ? (
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No users found.</div>
+          ) : users.map((user, index) => (
             <div
               key={`${user.id}-${index}`}
               className="grid grid-cols-[0.5fr_1fr_2.4fr_1fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
@@ -162,7 +160,7 @@ export const UsersPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>Showing 1-5 of 1,284 users</span>
+          <span>Total: {users.length} users</span>
           <div className="flex items-center gap-2">
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
               Prev

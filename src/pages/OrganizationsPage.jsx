@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { fetchOrganizations } from '../services/adminService';
 
 export const OrganizationsPage = () => {
   const [selectedApplication, setSelectedApplication] = useState(null);
@@ -7,104 +8,43 @@ export const OrganizationsPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [suspendConfirm, setSuspendConfirm] = useState(null);
   const [actionToast, setActionToast] = useState('');
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const applications = [
-    {
-      id: 'ORG-2041',
-      name: 'Safe Paws Shelter',
-      contactName: 'A. Gomez',
-      contactEmail: 'anna.gomez@safepaws.org',
-      contactPhone: '+63 912 345 6789',
-      location: 'Cebu City, Philippines',
-      description: 'A non-profit shelter focused on rescuing, rehabilitating, and rehoming stray animals.',
-      status: 'Pending',
-      applied: 'Apr 24, 2026',
-      documents: [
-        { name: 'Business permit', type: 'PDF', size: '1.2 MB' },
-        { name: 'Valid ID', type: 'Image', size: '640 KB' },
-        { name: 'Proof of legitimacy', type: 'PDF', size: '980 KB' }
-      ]
-    },
-    {
-      id: 'ORG-2039',
-      name: 'Hope for Strays',
-      contactName: 'L. Wang',
-      contactEmail: 'lisa.wang@hopeforstrays.ph',
-      contactPhone: '+63 908 778 1122',
-      location: 'Makati City, Philippines',
-      description: 'Community organization providing medical support, adoptions, and stray tracking assistance.',
-      status: 'Pending',
-      applied: 'Apr 22, 2026',
-      documents: [
-        { name: 'Business permit', type: 'PDF', size: '1.3 MB' },
-        { name: 'Valid ID', type: 'Image', size: '710 KB' },
-        { name: 'Proof of legitimacy', type: 'PDF', size: '920 KB' }
-      ]
-    },
-    {
-      id: 'ORG-2038',
-      name: 'City Care Network',
-      contactName: 'T. Singh',
-      contactEmail: 'tara.singh@citycare.net',
-      contactPhone: '+63 930 123 9090',
-      location: 'Davao City, Philippines',
-      description: 'Local animal care network managing rescue referrals, temporary shelters, and donations.',
-      status: 'Rejected',
-      applied: 'Apr 21, 2026',
-      documents: [
-        { name: 'Business permit', type: 'PDF', size: '1.1 MB' },
-        { name: 'Valid ID', type: 'Image', size: '610 KB' },
-        { name: 'Proof of legitimacy', type: 'PDF', size: '890 KB' }
-      ]
-    },
-    {
-      id: 'ORG-2037',
-      name: 'Paws & Hope Foundation',
-      contactName: 'M. Alvarez',
-      contactEmail: 'marco.alvarez@pawshope.org',
-      contactPhone: '+63 905 456 7788',
-      location: 'Pasig City, Philippines',
-      description: 'Animal welfare foundation supporting rescue intake, foster placement, and donation distribution.',
-      status: 'Pending',
-      applied: 'Apr 20, 2026',
-      documents: [
-        { name: 'Business permit', type: 'PDF', size: '1.4 MB' },
-        { name: 'Valid ID', type: 'Image', size: '700 KB' },
-        { name: 'Proof of legitimacy', type: 'PDF', size: '950 KB' }
-      ]
-    }
-  ];
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchOrganizations();
+        setApplications(data.map((o) => ({
+          id: o.id,
+          name: o.name,
+          contactName: o.contact_name,
+          contactEmail: o.contact_email,
+          contactPhone: o.contact_phone || '—',
+          location: o.location || '—',
+          description: '',
+          status: o.status,
+          applied: new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          documents: []
+        })));
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Unable to load organizations');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
-  const approvedOrganizations = [
-    {
-      id: 'ORG-1804',
-      name: 'Metro Rescue Team',
-      contactName: 'J. Carter',
-      contactEmail: 'joseph.carter@metrorescue.org',
-      status: 'Active',
-      approved: 'Apr 26, 2026'
-    },
-    {
-      id: 'ORG-1803',
-      name: 'Safe Paws Shelter',
-      contactName: 'A. Gomez',
-      contactEmail: 'anna.gomez@safepaws.org',
-      status: 'Active',
-      approved: 'Apr 25, 2026'
-    },
-    {
-      id: 'ORG-1802',
-      name: 'Hope for Strays',
-      contactName: 'L. Wang',
-      contactEmail: 'lisa.wang@hopeforstrays.ph',
-      status: 'Suspended',
-      approved: 'Apr 22, 2026'
-    }
-  ];
+  const approvedOrganizations = applications.filter(a => a.status === 'Verified' || a.status === 'Approved');
 
   const statusStyles = {
     Pending: 'badge badge-pending',
     Approved: 'badge badge-active',
+    Verified: 'badge badge-active',
     Rejected: 'badge badge-rejected'
   };
 
@@ -133,27 +73,26 @@ export const OrganizationsPage = () => {
           {actionToast}
         </div>
       )}
+
+      {error && (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
+
       <div className="space-y-6">
         <div className="card-lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="section-title">Organization Applications</h2>
-              <p className="section-subtitle">Total: 65</p>
+              <p className="section-subtitle">Total: {applications.length}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-outline">
-                Export
-              </button>
+              <button className="btn-outline">Export</button>
             </div>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <div className="relative w-full max-w-md">
-              <input
-                type="text"
-                placeholder="Search organization or email"
-                className="input-search"
-              />
+              <input type="text" placeholder="Search organization or email" className="input-search" />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                   <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" stroke="currentColor" strokeWidth="1.6" />
@@ -173,9 +112,7 @@ export const OrganizationsPage = () => {
 
           <div className="table-wrap">
             <div className="grid grid-cols-[0.5fr_1fr_1.5fr_2fr_1fr_1fr_7rem] items-center gap-2 table-head">
-              <span>
-                <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
-              </span>
+              <span><input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" /></span>
               <span>Application ID</span>
               <span>Organization</span>
               <span>Contact Person</span>
@@ -183,7 +120,11 @@ export const OrganizationsPage = () => {
               <span>Status</span>
               <span className="text-center">Actions</span>
             </div>
-            {applications.map((row, index) => (
+            {loading ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading organizations…</div>
+            ) : applications.length === 0 ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No applications found.</div>
+            ) : applications.map((row, index) => (
               <div
                 key={`${row.id}-${index}`}
                 className="grid grid-cols-[0.5fr_1fr_1.5fr_2fr_1fr_1fr_7rem] items-center gap-2 table-row"
@@ -199,15 +140,9 @@ export const OrganizationsPage = () => {
                   <p className="table-muted">{row.contactEmail}</p>
                 </div>
                 <span className="table-muted">{row.applied}</span>
-                <span className={statusStyles[row.status]}>
-                  {row.status}
-                </span>
+                <span className={statusStyles[row.status] || 'badge badge-pending'}>{row.status}</span>
                 <div className="flex items-center justify-center gap-2 text-[#77806d]" onClick={(event) => event.stopPropagation()}>
-                  <button
-                    className="icon-btn"
-                    title="View application"
-                    onClick={() => setSelectedApplication(row)}
-                  >
+                  <button className="icon-btn" title="View application" onClick={() => setSelectedApplication(row)}>
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                       <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                       <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
@@ -219,14 +154,7 @@ export const OrganizationsPage = () => {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-            <span>Showing 1-5 of 65 applications</span>
-            <div className="flex items-center gap-2">
-              <button className="btn-page">Prev</button>
-              <button className="btn-page-active">1</button>
-              <button className="btn-page">2</button>
-              <button className="btn-page">3</button>
-              <button className="btn-page">Next</button>
-            </div>
+            <span>Total: {applications.length} applications</span>
           </div>
         </div>
 
@@ -234,22 +162,16 @@ export const OrganizationsPage = () => {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="section-title">Approved Organizations</h2>
-              <p className="section-subtitle">Total: 28</p>
+              <p className="section-subtitle">Total: {approvedOrganizations.length}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-outline">
-                Export
-              </button>
+              <button className="btn-outline">Export</button>
             </div>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <div className="relative w-full max-w-md">
-              <input
-                type="text"
-                placeholder="Search organization or email"
-                className="input-search"
-              />
+              <input type="text" placeholder="Search organization or email" className="input-search" />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                   <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" stroke="currentColor" strokeWidth="1.6" />
@@ -269,9 +191,7 @@ export const OrganizationsPage = () => {
 
           <div className="table-wrap">
             <div className="grid grid-cols-[0.5fr_1fr_1.6fr_2fr_1fr_1fr_7rem] items-center gap-2 table-head">
-              <span>
-                <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
-              </span>
+              <span><input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" /></span>
               <span>Org ID</span>
               <span>Organization</span>
               <span>Contact Person</span>
@@ -279,46 +199,31 @@ export const OrganizationsPage = () => {
               <span>Approved Date</span>
               <span className="text-center">Actions</span>
             </div>
-            {approvedOrganizations.map((org, index) => (
-              <div
-                key={`${org.id}-${index}`}
-                className="grid grid-cols-[0.5fr_1fr_1.6fr_2fr_1fr_1fr_7rem] items-center gap-2 table-row"
-              >
-                <span>
-                  <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
-                </span>
+            {loading ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading…</div>
+            ) : approvedOrganizations.length === 0 ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No approved organizations.</div>
+            ) : approvedOrganizations.map((org, index) => (
+              <div key={`${org.id}-${index}`} className="grid grid-cols-[0.5fr_1fr_1.6fr_2fr_1fr_1fr_7rem] items-center gap-2 table-row">
+                <span><input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" /></span>
                 <span className="table-id">{org.id}</span>
                 <span className="font-medium text-[#4b5548]">{org.name}</span>
                 <div>
                   <p className="font-semibold text-[#4b5548]">{org.contactName}</p>
                   <p className="table-muted">{org.contactEmail}</p>
                 </div>
-                <span
-                  className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                    org.status === 'Active'
-                      ? 'bg-[#e8f3ea] text-[#2f7a43]'
-                      : 'bg-[#fbe9e9] text-[#b83a3a]'
-                  }`}
-                >
+                <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold ${org.status === 'Active' ? 'bg-[#e8f3ea] text-[#2f7a43]' : 'bg-[#fbe9e9] text-[#b83a3a]'}`}>
                   {org.status}
                 </span>
-                <span className="table-muted">{org.approved}</span>
+                <span className="table-muted">{org.applied}</span>
                 <div className="flex items-center justify-center gap-2 text-[#77806d]">
-                  <button
-                    className="icon-btn"
-                    title={org.status === 'Active' ? 'Suspend organization' : 'Activate organization'}
-                    onClick={() => setSuspendConfirm(org)}
-                  >
+                  <button className="icon-btn" title={org.status === 'Active' ? 'Suspend organization' : 'Activate organization'} onClick={() => setSuspendConfirm(org)}>
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                       <path d="M12 2v20" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                       <path d="M5 7h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                     </svg>
                   </button>
-                  <button
-                    className="icon-btn text-[#a25d5d]"
-                    title="Delete organization"
-                    onClick={() => setDeleteConfirm(org)}
-                  >
+                  <button className="icon-btn text-[#a25d5d]" title="Delete organization" onClick={() => setDeleteConfirm(org)}>
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                       <path d="M4 7h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                       <path d="M10 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -333,42 +238,27 @@ export const OrganizationsPage = () => {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-            <span>Showing 1-3 of 28 approved organizations</span>
-            <div className="flex items-center gap-2">
-              <button className="btn-page">Prev</button>
-              <button className="btn-page-active">1</button>
-              <button className="btn-page">2</button>
-              <button className="btn-page">Next</button>
-            </div>
+            <span>Total: {approvedOrganizations.length} approved organizations</span>
           </div>
         </div>
       </div>
 
       {selectedApplication && (
-        <div
-          className="modal-overlay"
-          onClick={() => setSelectedApplication(null)}
-        >
-          <div
-            className="modal-card max-w-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
+        <div className="modal-overlay" onClick={() => setSelectedApplication(null)}>
+          <div className="modal-card max-w-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-[#9aa294]">Application Details</p>
                 <h3 className="mt-2 text-xl font-semibold text-[#4b5548]">{selectedApplication.name}</h3>
                 <p className="text-sm text-[#7a8476]">{selectedApplication.location}</p>
               </div>
-              <span className={statusStyles[selectedApplication.status]}>
-                {selectedApplication.status}
-              </span>
+              <span className={statusStyles[selectedApplication.status] || 'badge badge-pending'}>{selectedApplication.status}</span>
             </div>
 
             <div className="mt-5 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
               <div className="rounded-2xl border border-[#eef1e9] bg-[#fafaf8] p-4">
                 <h4 className="text-sm font-semibold text-[#4b5548]">Organization Profile</h4>
-                <p className="mt-3 text-sm leading-6 text-[#5a6457]">{selectedApplication.description}</p>
-
+                <p className="mt-3 text-sm leading-6 text-[#5a6457]">{selectedApplication.description || '—'}</p>
                 <div className="mt-5 grid gap-3 text-sm">
                   <div className="flex items-center justify-between gap-4">
                     <span className="text-[#9aa294]">Contact Person</span>
@@ -392,112 +282,33 @@ export const OrganizationsPage = () => {
               <div className="rounded-2xl border border-[#eef1e9] p-4">
                 <h4 className="text-sm font-semibold text-[#4b5548]">Uploaded Documents</h4>
                 <div className="mt-4 space-y-3">
-                  {selectedApplication.documents.map((document) => (
+                  {selectedApplication.documents.length === 0 ? (
+                    <p className="text-sm text-[#9aa294]">No documents submitted.</p>
+                  ) : selectedApplication.documents.map((document) => (
                     <div key={document.name} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6eadf] bg-white px-3 py-3 text-sm text-[#5a6457]">
                       <div>
                         <p className="font-semibold text-[#4b5548]">{document.name}</p>
                         <p className="text-xs text-[#9aa294]">{document.type} · {document.size}</p>
                       </div>
-                      <button
-                        type="button"
-                        className="btn-pill-outline-sm"
-                        onClick={() => setSelectedDocument(document)}
-                      >
-                        View
-                      </button>
+                      <button type="button" className="btn-pill-outline-sm" onClick={() => setSelectedDocument(document)}>View</button>
                     </div>
                   ))}
                 </div>
 
                 <div className="mt-5 flex items-center gap-3">
-                  <button
-                    type="button"
-                    className="btn-pill-primary flex-1"
-                    onClick={() => handleApprove(selectedApplication)}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-pill-danger flex-1"
-                    onClick={() => handleReject(selectedApplication)}
-                  >
-                    Reject
-                  </button>
+                  <button type="button" className="btn-pill-primary flex-1" onClick={() => handleApprove(selectedApplication)}>Accept</button>
+                  <button type="button" className="btn-pill-danger flex-1" onClick={() => handleReject(selectedApplication)}>Reject</button>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 flex items-center justify-end">
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={() => setSelectedApplication(null)}
-              >
-                Close
-              </button>
+              <button type="button" className="btn-outline" onClick={() => setSelectedApplication(null)}>Close</button>
             </div>
           </div>
         </div>
       )}
 
-      {selectedDocument && (
-        <div
-          className="modal-overlay z-40 bg-black/50"
-          onClick={() => setSelectedDocument(null)}
-        >
-          <div
-            className="modal-card max-w-lg"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-[#9aa294]">Document Preview</p>
-                <h3 className="mt-2 text-lg font-semibold text-[#4b5548]">{selectedDocument.name}</h3>
-                <p className="text-xs text-[#9aa294]">{selectedDocument.type} · {selectedDocument.size}</p>
-              </div>
-              <button
-                type="button"
-                className="btn-pill-outline-sm"
-                onClick={() => setSelectedDocument(null)}
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-dashed border-[#e2e6dc] bg-[#fafaf8] p-6">
-              <div className="flex flex-col items-center gap-2 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#77806d] shadow-sm">
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M14 2v6h6" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M8 13h8" stroke="currentColor" strokeWidth="1.6" />
-                    <path d="M8 17h5" stroke="currentColor" strokeWidth="1.6" />
-                  </svg>
-                </div>
-                <p className="text-sm font-semibold text-[#4b5548]">Document ready to view</p>
-                <p className="text-xs text-[#9aa294]">Preview placeholder for uploaded file.</p>
-              </div>
-            </div>
-
-            <div className="mt-6 flex items-center gap-3">
-              <button
-                type="button"
-                className="btn-pill-primary flex-1"
-              >
-                Open Document
-              </button>
-              <button
-                type="button"
-                className="btn-outline flex-1"
-                onClick={() => setSelectedDocument(null)}
-              >
-                Back
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {deleteConfirm && (
         <div className="modal-overlay">
           <div className="modal-card max-w-md">
@@ -514,33 +325,17 @@ export const OrganizationsPage = () => {
                 <p className="text-sm text-[#9aa294]">This action cannot be undone.</p>
               </div>
             </div>
-
             <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">Organization:</span> {deleteConfirm.name} ({deleteConfirm.id})
             </div>
-
             <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                className="btn-secondary flex-1"
-                onClick={() => setDeleteConfirm(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-pill-danger flex-1"
-                onClick={() => {
-                  showActionToast('✓ Organization deleted');
-                  setDeleteConfirm(null);
-                }}
-              >
-                Delete
-              </button>
+              <button type="button" className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              <button type="button" className="btn-pill-danger flex-1" onClick={() => { showActionToast('✓ Organization deleted'); setDeleteConfirm(null); }}>Delete</button>
             </div>
           </div>
         </div>
       )}
+
       {suspendConfirm && (
         <div className="modal-overlay">
           <div className="modal-card max-w-md">
@@ -553,34 +348,16 @@ export const OrganizationsPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">
-                  {suspendConfirm.status === 'Active' ? 'Suspend organization?' : 'Activate organization?'}
-                </h3>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{suspendConfirm.status === 'Active' ? 'Suspend organization?' : 'Activate organization?'}</h3>
                 <p className="text-sm text-[#9aa294]">You can change this status again later.</p>
               </div>
             </div>
-
             <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">Organization:</span> {suspendConfirm.name} ({suspendConfirm.id})
             </div>
-
             <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                className="btn-secondary flex-1"
-                onClick={() => setSuspendConfirm(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-pill-primary flex-1"
-                onClick={() => {
-                  const nextAction = suspendConfirm.status === 'Active' ? 'suspended' : 'activated';
-                  showActionToast(`✓ Organization ${nextAction}`);
-                  setSuspendConfirm(null);
-                }}
-              >
+              <button type="button" className="btn-secondary flex-1" onClick={() => setSuspendConfirm(null)}>Cancel</button>
+              <button type="button" className="btn-pill-primary flex-1" onClick={() => { const nextAction = suspendConfirm.status === 'Active' ? 'suspended' : 'activated'; showActionToast(`✓ Organization ${nextAction}`); setSuspendConfirm(null); }}>
                 {suspendConfirm.status === 'Active' ? 'Suspend' : 'Activate'}
               </button>
             </div>

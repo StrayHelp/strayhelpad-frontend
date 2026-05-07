@@ -1,50 +1,35 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { fetchDonations } from '../services/adminService';
 
 export const DonationsPage = () => {
   const [selectedDonation, setSelectedDonation] = useState(null);
-  const donations = [
-    {
-      id: 'TRX-89012',
-      name: 'Maya Sinclair',
-      org: 'Safe Paws Shelter',
-      amount: '₱240.00',
-      method: 'Maya',
-      date: 'Apr 24, 2026'
-    },
-    {
-      id: 'TRX-89011',
-      name: 'Jonas Reed',
-      org: 'Metro Rescue Team',
-      amount: '₱85.00',
-      method: 'GCash',
-      date: 'Apr 23, 2026'
-    },
-    {
-      id: 'TRX-89010',
-      name: 'Annie Clarke',
-      org: 'Hope for Strays',
-      amount: '₱410.00',
-      method: 'Card',
-      date: 'Apr 22, 2026'
-    },
-    {
-      id: 'TRX-89009',
-      name: 'Carlos Mendez',
-      org: 'City Care Network',
-      amount: '₱120.00',
-      method: 'GCash',
-      date: 'Apr 21, 2026'
-    },
-    {
-      id: 'TRX-89008',
-      name: 'Jamie Ford',
-      org: 'Paws & Hope Foundation',
-      amount: '₱560.00',
-      method: 'Bank',
-      date: 'Apr 20, 2026'
-    }
-  ];
+  const [donations, setDonations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchDonations();
+        setDonations(data.map((d) => ({
+          id: d.id,
+          name: d.donor_name,
+          org: d.organization_name || '—',
+          amount: `₱${Number(d.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+          method: d.payment_method || '—',
+          date: new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        })));
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Unable to load donations');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   return (
     <Layout title="Donations">
@@ -52,7 +37,7 @@ export const DonationsPage = () => {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-semibold text-[#4b5548]">Donation Transactions</h2>
-            <p className="mt-1 text-sm text-[#7a8476]">Total collected: ₱48,240.00</p>
+            <p className="mt-1 text-sm text-[#7a8476]">Total: {donations.length} transactions</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm">
@@ -95,6 +80,10 @@ export const DonationsPage = () => {
           </div>
         </div>
 
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
         <div className="mt-6 overflow-hidden rounded-2xl border border-[#e6eadf]">
           <div className="grid grid-cols-[0.5fr_1.1fr_1.3fr_1.6fr_1.1fr_1fr_1fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
             <span>
@@ -108,7 +97,11 @@ export const DonationsPage = () => {
             <span className="text-right">Amount</span>
             <span className="text-center">Actions</span>
           </div>
-          {donations.map((row, index) => (
+          {loading ? (
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading donations…</div>
+          ) : donations.length === 0 ? (
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No donations found.</div>
+          ) : donations.map((row, index) => (
             <div
               key={`${row.id}-${index}`}
               className="grid grid-cols-[0.5fr_1.1fr_1.3fr_1.6fr_1.1fr_1fr_1fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
@@ -141,7 +134,7 @@ export const DonationsPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>Showing 1-5 of 1,026 transactions</span>
+          <span>Total: {donations.length} transactions</span>
           <div className="flex items-center gap-2">
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
               Prev

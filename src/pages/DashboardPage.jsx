@@ -1,13 +1,57 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { fetchDashboardStats, fetchDonations, fetchUsers } from '../services/adminService';
 
 export const DashboardPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [recentDonations, setRecentDonations] = useState([]);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [statsData, donationsData, usersData] = await Promise.all([
+          fetchDashboardStats(),
+          fetchDonations(),
+          fetchUsers()
+        ]);
+        
+        setStats(statsData);
+        setRecentDonations(donationsData.slice(0, 4).map(d => ({
+          donor: d.donor_name,
+          org: d.organization_name || '—',
+          amount: `₱${Number(d.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
+          method: d.payment_method || '—',
+          date: new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+        })));
+        setRecentUsers(usersData.slice(0, 4).map(u => ({
+          name: u.name,
+          role: u.role,
+          meta: `${u.role} · ${new Date(u.created_at).toLocaleDateString()}`,
+          email: u.email,
+          phone: '—',
+          location: '—',
+          joined: new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          status: u.account_status || 'Active'
+        })));
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Unable to load dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   const summaryCards = [
     {
       label: 'Total Users',
-      value: '1,284',
+      value: stats?.users || 0,
       icon: (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
           <path d="M16 11a4 4 0 1 0-8 0" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -18,7 +62,7 @@ export const DashboardPage = () => {
     },
     {
       label: 'Total Donations',
-      value: '₱48.2k',
+      value: stats?.donations || 0,
       icon: (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
           <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
@@ -29,7 +73,7 @@ export const DashboardPage = () => {
     },
     {
       label: 'Reports Count',
-      value: '392',
+      value: stats?.reports || 0,
       icon: (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
           <path d="M6 4h9l3 3v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -41,7 +85,7 @@ export const DashboardPage = () => {
     },
     {
       label: 'Organizations',
-      value: '64',
+      value: stats?.organizations || 0,
       icon: (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
           <path d="M3 20h18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -55,13 +99,17 @@ export const DashboardPage = () => {
   return (
     <Layout title="Dashboard">
       <div className="grid gap-6">
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {summaryCards.map((stat) => (
             <div key={stat.label} className="card-md">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-[#7a8476]">{stat.label}</p>
-                  <p className="mt-2 text-2xl font-semibold text-[#4b5548]">{stat.value}</p>
+                  <p className="mt-2 text-2xl font-semibold text-[#4b5548]">{loading ? '...' : stat.value}</p>
                 </div>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#e6eadf] text-[#77806d]">
                   {stat.icon}
@@ -75,9 +123,7 @@ export const DashboardPage = () => {
           <div className="card-lg">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#4b5548]">Recent Donations</h2>
-              <button className="btn-pill-muted">
-                See all
-              </button>
+              <button className="btn-pill-muted">See all</button>
             </div>
 
             <div className="table-wrap">
@@ -88,13 +134,12 @@ export const DashboardPage = () => {
                 <span className="text-right pr-4">Amount</span>
                 <span className="pl-4">Date</span>
               </div>
-              {[
-                { donor: 'Maya Sinclair', org: 'Safe Paws Shelter', amount: '₱2,400.00', method: 'Maya', date: 'Apr 24, 2026' },
-                { donor: 'Jonas Reed', org: 'Metro Rescue Team', amount: '₱850.00', method: 'GCash', date: 'Apr 23, 2026' },
-                { donor: 'Annie Clarke', org: 'Hope for Strays', amount: '₱4,100.00', method: 'Card', date: 'Apr 22, 2026' },
-                { donor: 'Carlos Mendez', org: 'City Care Network', amount: '₱1,200.00', method: 'GCash', date: 'Apr 21, 2026' },
-              ].map((row, index) => (
-                <div key={`${row.org}-${index}`} className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center table-row">
+              {loading ? (
+                <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading...</div>
+              ) : recentDonations.length === 0 ? (
+                <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No donations yet.</div>
+              ) : recentDonations.map((row, index) => (
+                <div key={`${row.donor}-${index}`} className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center table-row">
                   <span className="font-semibold text-[#4b5548]">{row.donor}</span>
                   <span>{row.org}</span>
                   <span className="inline-flex w-fit items-center rounded-full border border-[#e2e6dc] bg-[#fafaf8] px-3 py-1 text-xs font-semibold text-[#6c7669]">
@@ -110,54 +155,15 @@ export const DashboardPage = () => {
           <div className="card-lg">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#4b5548]">Recent Users</h2>
-              <button className="btn-pill-muted">
-                See all
-              </button>
+              <button className="btn-pill-muted">See all</button>
             </div>
 
             <div className="mt-4 space-y-4">
-              {[
-                {
-                  name: 'Lewis S. Cunningham',
-                  role: 'Donor',
-                  meta: 'Donor · 2 hours ago',
-                  email: 'lewis.cunningham@email.com',
-                  phone: '+63 917 445 2210',
-                  location: 'Quezon City, Philippines',
-                  joined: 'Apr 24, 2026',
-                  status: 'Active'
-                },
-                {
-                  name: 'Annie Clarke',
-                  role: 'Volunteer',
-                  meta: 'Volunteer · 5 hours ago',
-                  email: 'annie.clarke@volunteer.org',
-                  phone: '+63 918 201 5578',
-                  location: 'Makati City, Philippines',
-                  joined: 'Apr 24, 2026',
-                  status: 'Active'
-                },
-                {
-                  name: 'Carlos Mendez',
-                  role: 'Shelter admin',
-                  meta: 'Shelter admin · 1 day ago',
-                  email: 'carlos.mendez@shelter.ph',
-                  phone: '+63 905 334 9901',
-                  location: 'Davao City, Philippines',
-                  joined: 'Apr 23, 2026',
-                  status: 'Verified'
-                },
-                {
-                  name: 'Jamie Ford',
-                  role: 'Reporter',
-                  meta: 'Reporter · 2 days ago',
-                  email: 'jamie.ford@strayhelp.com',
-                  phone: '+63 912 778 4499',
-                  location: 'Cebu City, Philippines',
-                  joined: 'Apr 22, 2026',
-                  status: 'Pending'
-                },
-              ].map((user, index) => (
+              {loading ? (
+                <div className="text-center text-sm text-[#7a8476]">Loading...</div>
+              ) : recentUsers.length === 0 ? (
+                <div className="text-center text-sm text-[#7a8476]">No users yet.</div>
+              ) : recentUsers.map((user, index) => (
                 <div key={`${user.name}-${index}`} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-[#e6eadf]" />
@@ -182,70 +188,19 @@ export const DashboardPage = () => {
               ))}
             </div>
           </div>
-
-          <div className="card-lg lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-[#4b5548]">Logging & Monitoring</h2>
-              <div className="flex items-center gap-2">
-                <button className="btn-pill-muted">
-                  View logs
-                </button>
-                <button className="btn-pill-muted">
-                  Download CSV
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_1.8fr]">
-              <div className="rounded-2xl border border-[#e2e6dc] bg-[#fafaf8] p-4">
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#9aa294]">Secure Audit Logging</p>
-                <p className="mt-3 text-sm text-[#5a6457]">
-                  Transaction events, admin actions, and system changes are captured with tamper-evident hashing.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[#6c7669]">
-                  <span className="rounded-full border border-[#e2e6dc] bg-white px-3 py-1">Retention: 365 days</span>
-                  <span className="rounded-full border border-[#e2e6dc] bg-white px-3 py-1">AES-256 at rest</span>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {[
-                  { title: 'Donation payout verified', meta: 'Payments service · 2 minutes ago', status: 'Verified' },
-                  { title: 'New admin role granted', meta: 'Access control · 18 minutes ago', status: 'Reviewed' },
-                  { title: 'System alert resolved', meta: 'Monitoring · 1 hour ago', status: 'Resolved' }
-                ].map((logItem, index) => (
-                  <div key={`${logItem.title}-${index}`} className="flex items-center justify-between rounded-2xl border border-[#e2e6dc] bg-white px-4 py-3">
-                    <div>
-                      <p className="text-sm font-semibold text-[#4b5548]">{logItem.title}</p>
-                      <p className="text-xs text-[#9aa294]">{logItem.meta}</p>
-                    </div>
-                    <span className="badge-neutral">{logItem.status}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
       {selectedUser && (
-        <div
-          className="modal-overlay"
-          onClick={() => setSelectedUser(null)}
-        >
-          <div
-            className="modal-card max-w-lg"
-            onClick={(event) => event.stopPropagation()}
-          >
+        <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
+          <div className="modal-card max-w-lg" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-[#9aa294]">User Details</p>
                 <h3 className="mt-2 text-xl font-semibold text-[#4b5548]">{selectedUser.name}</h3>
                 <p className="text-sm text-[#7a8476]">{selectedUser.role}</p>
               </div>
-              <span className="badge-neutral">
-                {selectedUser.status}
-              </span>
+              <span className="badge-neutral">{selectedUser.status}</span>
             </div>
 
             <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
@@ -254,25 +209,13 @@ export const DashboardPage = () => {
                 <span className="font-semibold text-[#4b5548]">{selectedUser.email}</span>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <span className="text-[#9aa294]">Phone</span>
-                <span className="font-semibold text-[#4b5548]">{selectedUser.phone}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-[#9aa294]">Location</span>
-                <span className="font-semibold text-[#4b5548]">{selectedUser.location}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
                 <span className="text-[#9aa294]">Joined</span>
                 <span className="font-semibold text-[#4b5548]">{selectedUser.joined}</span>
               </div>
             </div>
 
             <div className="mt-6 flex items-center justify-end">
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={() => setSelectedUser(null)}
-              >
+              <button type="button" className="btn-outline" onClick={() => setSelectedUser(null)}>
                 Close
               </button>
             </div>

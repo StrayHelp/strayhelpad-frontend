@@ -1,57 +1,38 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
+import { fetchReports } from '../services/adminService';
 
 export const ReportsPage = () => {
   const [selectedReport, setSelectedReport] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [actionToast, setActionToast] = useState('');
-  const reports = [
-    {
-      id: 'RPT-2041',
-      user: 'Maya Sinclair',
-      title: 'Injured dog near market',
-      description: 'Found a limping dog near the central market entrance. Needs immediate help.',
-      category: 'Rescue',
-      date: 'Apr 24, 2026',
-      status: 'Active'
-    },
-    {
-      id: 'RPT-2040',
-      user: 'Jonas Reed',
-      title: 'Abandoned kitten',
-      description: 'Small kitten left near the community park benches. No collar spotted.',
-      category: 'Found Stray',
-      date: 'Apr 23, 2026',
-      status: 'Flagged'
-    },
-    {
-      id: 'RPT-2039',
-      user: 'Annie Clarke',
-      title: 'Lost pet near Riverside',
-      description: 'Missing brown shih tzu, last seen near Riverside walkway. Please help.',
-      category: 'Lost Pet',
-      date: 'Apr 22, 2026',
-      status: 'Active'
-    },
-    {
-      id: 'RPT-2038',
-      user: 'Carlos Mendez',
-      title: 'Stray pack spotted',
-      description: 'Group of 4 strays roaming near the depot. Some appear injured.',
-      category: 'Rescue',
-      date: 'Apr 21, 2026',
-      status: 'Active'
-    },
-    {
-      id: 'RPT-2037',
-      user: 'Jamie Ford',
-      title: 'Possible abuse report',
-      description: 'Witnessed rough handling of a dog near Elm Street. Needs investigation.',
-      category: 'Rescue',
-      date: 'Apr 20, 2026',
-      status: 'Flagged'
-    }
-  ];
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchReports();
+        setReports(data.map((r) => ({
+          id: r.id,
+          user: r.reporter_name,
+          title: r.description?.slice(0, 40) || '—',
+          description: r.description,
+          category: 'Rescue',
+          date: new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          status: r.status
+        })));
+      } catch (err) {
+        setError(err.response?.data?.message || err.message || 'Unable to load reports');
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const showActionToast = (message) => {
     setActionToast(message);
@@ -72,7 +53,7 @@ export const ReportsPage = () => {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="section-title">Reports Overview</h2>
-            <p className="section-subtitle">Total reports: 392</p>
+            <p className="section-subtitle">Total reports: {reports.length}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button className="btn-outline">
@@ -113,6 +94,10 @@ export const ReportsPage = () => {
           </div>
         </div>
 
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+
         <div className="table-wrap">
           <div className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-head">
             <span>
@@ -126,7 +111,11 @@ export const ReportsPage = () => {
             <span>Status</span>
             <span className="text-center">Actions</span>
           </div>
-          {reports.map((report, index) => (
+          {loading ? (
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading reports…</div>
+          ) : reports.length === 0 ? (
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No reports found.</div>
+          ) : reports.map((report, index) => (
             <div
               key={`${report.id}-${index}`}
               className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-row"
@@ -187,7 +176,7 @@ export const ReportsPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>Showing 1-5 of 392 reports</span>
+          <span>Total: {reports.length} reports</span>
           <div className="flex items-center gap-2">
             <button className="btn-page">
               Prev
