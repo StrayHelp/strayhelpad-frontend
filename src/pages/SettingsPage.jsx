@@ -1,7 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
+import { useSettingsContext } from '../context/SettingsContext';
+import {
+  getRecycleBin,
+  restoreRecycleBinItem,
+  deleteRecycleBinItem
+} from '../services/settingsService';
 
 export const SettingsPage = () => {
+  const {
+    settings: contextSettings,
+    loading: contextLoading,
+    updateSettings: contextUpdateSettings,
+    loadSettings
+  } = useSettingsContext();
   const [activeTab, setActiveTab] = useState('profile');
   const [successMessage, setSuccessMessage] = useState('');
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -9,6 +21,14 @@ export const SettingsPage = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [restoreConfirm, setRestoreConfirm] = useState(null);
   const [recycleToast, setRecycleToast] = useState('');
+  const [recycleLoading, setRecycleLoading] = useState(false);
+  const [recycleError, setRecycleError] = useState('');
+  const [recycleBinData, setRecycleBinData] = useState({
+    users: [],
+    organizations: [],
+    reports: [],
+    donationDrives: []
+  });
 
   // Profile Settings
   const [profileData, setProfileData] = useState({
@@ -68,65 +88,53 @@ export const SettingsPage = () => {
   });
   const [securityChanges, setSecurityChanges] = useState({});
 
-  const deletedUsers = [
-    {
-      id: 'USR-0942',
-      name: 'Lina Porter',
-      email: 'lina.porter@strayhelp.org',
-      deleted: 'Apr 30, 2026'
-    },
-    {
-      id: 'USR-0931',
-      name: 'Gavin Cruz',
-      email: 'gavin.cruz@strayhelp.org',
-      deleted: 'Apr 27, 2026'
-    }
-  ];
+  // Initialize from context settings
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
-  const deletedOrganizations = [
-    {
-      id: 'ORG-1720',
-      name: 'Northside Rescue',
-      contactEmail: 'hello@northsiderescue.org',
-      deleted: 'Apr 29, 2026'
-    },
-    {
-      id: 'ORG-1714',
-      name: 'Care & Paws PH',
-      contactEmail: 'admin@careandpaws.ph',
-      deleted: 'Apr 26, 2026'
+  useEffect(() => {
+    if (contextSettings) {
+      if (contextSettings.profile) {
+        setProfileData((prev) => ({
+          ...prev,
+          ...contextSettings.profile,
+          adminName: contextSettings.profile.adminName && String(contextSettings.profile.adminName).trim().length > 0
+            ? contextSettings.profile.adminName
+            : prev.adminName
+        }));
+      }
+      if (contextSettings.system) setSystemData((prev) => ({ ...prev, ...contextSettings.system }));
+      if (contextSettings.userManagement) setUserMgmtData((prev) => ({ ...prev, ...contextSettings.userManagement }));
+      if (contextSettings.organization) setOrgData((prev) => ({ ...prev, ...contextSettings.organization }));
+      if (contextSettings.donation) setDonationData((prev) => ({ ...prev, ...contextSettings.donation }));
+      if (contextSettings.security) setSecurityData(prev => ({ ...prev, ...contextSettings.security }));
     }
-  ];
+  }, [contextSettings]);
 
-  const deletedReports = [
-    {
-      id: 'RPT-1908',
-      title: 'Injured dog near terminal',
-      category: 'Rescue',
-      deleted: 'Apr 28, 2026'
-    },
-    {
-      id: 'RPT-1903',
-      title: 'Abandoned kitten box',
-      category: 'Found Stray',
-      deleted: 'Apr 25, 2026'
+  const loadRecycleBin = async () => {
+    try {
+      setRecycleLoading(true);
+      setRecycleError('');
+      const data = await getRecycleBin();
+      setRecycleBinData(data.recycleBin || {
+        users: [],
+        organizations: [],
+        reports: [],
+        donationDrives: []
+      });
+    } catch (error) {
+      setRecycleError(error?.response?.data?.message || error.message || 'Failed to load recycle bin');
+    } finally {
+      setRecycleLoading(false);
     }
-  ];
+  };
 
-  const deletedDonationDrives = [
-    {
-      id: 'DRV-1402',
-      title: 'Emergency Food Kits',
-      organization: 'Safe Paws Shelter',
-      deleted: 'Apr 29, 2026'
-    },
-    {
-      id: 'DRV-1396',
-      title: 'Spay & Neuter Fund',
-      organization: 'Metro Rescue Team',
-      deleted: 'Apr 26, 2026'
+  useEffect(() => {
+    if (activeTab === 'recycle') {
+      loadRecycleBin();
     }
-  ];
+  }, [activeTab]);
 
   // Handlers
   const handleProfileChange = (field, value) => {
@@ -194,10 +202,30 @@ export const SettingsPage = () => {
     }
   };
 
-  const confirmSave = () => {
+  const confirmSave = async () => {
     if (confirmAction) {
-      confirmAction.resetChanges();
-      showSuccess();
+      try {
+        const settingsUpdate = {};
+        if (confirmAction.tab === 'profile') {
+          settingsUpdate.profile = {
+            ...profileData,
+            adminName: String(profileData.adminName || '').trim()
+          };
+        }
+        if (confirmAction.tab === 'system') settingsUpdate.system = systemData;
+        if (confirmAction.tab === 'users') settingsUpdate.userManagement = userMgmtData;
+        if (confirmAction.tab === 'organization') settingsUpdate.organization = orgData;
+        if (confirmAction.tab === 'donation') settingsUpdate.donation = donationData;
+        if (confirmAction.tab === 'security') settingsUpdate.security = securityData;
+
+        await contextUpdateSettings(settingsUpdate);
+        confirmAction.resetChanges();
+        showSuccess();
+      } catch (error) {
+        console.error('Failed to save settings:', error);
+        setSuccessMessage('✗ Failed to save settings');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
     }
     setShowConfirmation(false);
     setConfirmAction(null);
@@ -212,10 +240,26 @@ export const SettingsPage = () => {
   };
 
   const confirmDelete = () => {
-    if (deleteConfirm) {
-      showRecycleToast(`✓ ${deleteConfirm.type} deleted forever`);
+    if (!deleteConfirm) {
+      return;
     }
-    setDeleteConfirm(null);
+
+    const doDelete = async () => {
+      try {
+        setRecycleError('');
+        const response = await deleteRecycleBinItem(deleteConfirm.itemTypeKey, deleteConfirm.id);
+        if (response.recycleBin) {
+          setRecycleBinData(response.recycleBin);
+        }
+        showRecycleToast(`✓ ${deleteConfirm.type} deleted forever`);
+      } catch (error) {
+        setRecycleError(error?.response?.data?.message || error.message || 'Failed to delete recycle bin item');
+      } finally {
+        setDeleteConfirm(null);
+      }
+    };
+
+    doDelete();
   };
 
   const openRestoreConfirm = (item) => {
@@ -227,10 +271,26 @@ export const SettingsPage = () => {
   };
 
   const confirmRestore = () => {
-    if (restoreConfirm) {
-      showRecycleToast(`✓ ${restoreConfirm.type} restored`);
+    if (!restoreConfirm) {
+      return;
     }
-    setRestoreConfirm(null);
+
+    const doRestore = async () => {
+      try {
+        setRecycleError('');
+        const response = await restoreRecycleBinItem(restoreConfirm.itemTypeKey, restoreConfirm.id);
+        if (response.recycleBin) {
+          setRecycleBinData(response.recycleBin);
+        }
+        showRecycleToast(`✓ ${restoreConfirm.type} restored`);
+      } catch (error) {
+        setRecycleError(error?.response?.data?.message || error.message || 'Failed to restore recycle bin item');
+      } finally {
+        setRestoreConfirm(null);
+      }
+    };
+
+    doRestore();
   };
 
   // Tabs Configuration
@@ -246,7 +306,13 @@ export const SettingsPage = () => {
 
   return (
     <Layout title="Settings">
-      <div className="max-w-6xl">
+      {contextLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-[#9aa294]">Loading settings...</div>
+        </div>
+      ) : (
+      <>
+        <div className="max-w-6xl">
         {/* Success Message */}
         {successMessage && (
           <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
@@ -254,15 +320,6 @@ export const SettingsPage = () => {
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
             {successMessage}
-          </div>
-        )}
-
-        {recycleToast && (
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
-            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-            {recycleToast}
           </div>
         )}
 
@@ -733,7 +790,7 @@ export const SettingsPage = () => {
                 <div>
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Users</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 12</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.users.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
@@ -743,7 +800,7 @@ export const SettingsPage = () => {
                       <span>Date Deleted</span>
                       <span className="pr-2 text-right">Actions</span>
                     </div>
-                    {deletedUsers.map((user, index) => (
+                    {recycleBinData.users.map((user, index) => (
                       <div
                         key={`${user.id}-${index}`}
                         className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
@@ -761,7 +818,8 @@ export const SettingsPage = () => {
                             onClick={() => openRestoreConfirm({
                               type: 'User',
                               name: user.name,
-                              id: user.id
+                              id: user.id,
+                              itemTypeKey: 'users'
                             })}
                           >
                             Restore
@@ -771,7 +829,8 @@ export const SettingsPage = () => {
                             onClick={() => openDeleteConfirm({
                               type: 'User',
                               name: user.name,
-                              id: user.id
+                              id: user.id,
+                              itemTypeKey: 'users'
                             })}
                           >
                             Delete
@@ -785,7 +844,7 @@ export const SettingsPage = () => {
                 <div>
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Organizations</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 6</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.organizations.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
@@ -795,7 +854,7 @@ export const SettingsPage = () => {
                       <span>Date Deleted</span>
                       <span className="pr-2 text-right">Actions</span>
                     </div>
-                    {deletedOrganizations.map((org, index) => (
+                    {recycleBinData.organizations.map((org, index) => (
                       <div
                         key={`${org.id}-${index}`}
                         className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
@@ -813,7 +872,8 @@ export const SettingsPage = () => {
                             onClick={() => openRestoreConfirm({
                               type: 'Organization',
                               name: org.name,
-                              id: org.id
+                              id: org.id,
+                              itemTypeKey: 'organizations'
                             })}
                           >
                             Restore
@@ -823,7 +883,8 @@ export const SettingsPage = () => {
                             onClick={() => openDeleteConfirm({
                               type: 'Organization',
                               name: org.name,
-                              id: org.id
+                              id: org.id,
+                              itemTypeKey: 'organizations'
                             })}
                           >
                             Delete
@@ -837,7 +898,7 @@ export const SettingsPage = () => {
                 <div>
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Reports</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 9</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.reports.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
@@ -847,7 +908,7 @@ export const SettingsPage = () => {
                       <span>Date Deleted</span>
                       <span className="pr-2 text-right">Actions</span>
                     </div>
-                    {deletedReports.map((report, index) => (
+                    {recycleBinData.reports.map((report, index) => (
                       <div
                         key={`${report.id}-${index}`}
                         className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
@@ -862,7 +923,8 @@ export const SettingsPage = () => {
                             onClick={() => openRestoreConfirm({
                               type: 'Report',
                               name: report.title,
-                              id: report.id
+                              id: report.id,
+                              itemTypeKey: 'reports'
                             })}
                           >
                             Restore
@@ -872,7 +934,8 @@ export const SettingsPage = () => {
                             onClick={() => openDeleteConfirm({
                               type: 'Report',
                               name: report.title,
-                              id: report.id
+                              id: report.id,
+                              itemTypeKey: 'reports'
                             })}
                           >
                             Delete
@@ -886,7 +949,7 @@ export const SettingsPage = () => {
                 <div>
                   <div className="flex items-center justify-between">
                     <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Donation Drives</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: 5</span>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.donationDrives.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
@@ -896,7 +959,7 @@ export const SettingsPage = () => {
                       <span>Date Deleted</span>
                       <span className="pr-2 text-right">Actions</span>
                     </div>
-                    {deletedDonationDrives.map((drive, index) => (
+                    {recycleBinData.donationDrives.map((drive, index) => (
                       <div
                         key={`${drive.id}-${index}`}
                         className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
@@ -914,7 +977,8 @@ export const SettingsPage = () => {
                             onClick={() => openRestoreConfirm({
                               type: 'Donation drive',
                               name: drive.title,
-                              id: drive.id
+                              id: drive.id,
+                              itemTypeKey: 'donationDrives'
                             })}
                           >
                             Restore
@@ -924,7 +988,8 @@ export const SettingsPage = () => {
                             onClick={() => openDeleteConfirm({
                               type: 'Donation drive',
                               name: drive.title,
-                              id: drive.id
+                              id: drive.id,
+                              itemTypeKey: 'donationDrives'
                             })}
                           >
                             Delete
@@ -934,48 +999,23 @@ export const SettingsPage = () => {
                     ))}
                   </div>
                 </div>
+
+                {recycleLoading && (
+                  <p className="text-sm text-[#7a8476]">Loading recycle bin...</p>
+                )}
+
+                {recycleError && (
+                  <p className="text-sm text-[#b83a3a]">{recycleError}</p>
+                )}
+
+                {recycleToast && (
+                  <p className="text-sm text-[#2f7a43]">{recycleToast}</p>
+                )}
               </div>
             </SettingSection>
           </div>
         )}
       </div>
-
-      {/* Confirmation Modal */}
-      {showConfirmation && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="rounded-2xl border border-[#e2e6dc] bg-white p-6 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h3 className="text-lg font-semibold text-[#4b5548]">Confirm Changes</h3>
-            </div>
-            <p className="mt-2 text-sm text-[#9aa294]">Are you sure you want to save these changes?</p>
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => setShowConfirmation(false)}
-                className="btn-secondary flex items-center justify-center gap-2 flex-1"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Cancel
-              </button>
-              <button
-                onClick={confirmSave}
-                className="btn-primary flex items-center justify-center gap-2 flex-1"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {deleteConfirm && (
         <div className="modal-overlay">
@@ -1056,6 +1096,51 @@ export const SettingsPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showConfirmation && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#eef1e9] text-[#77806d]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 5v14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M5 12h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">Save changes?</h3>
+                <p className="text-sm text-[#9aa294]">This will update the saved settings for this section.</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">Section:</span> {confirmAction?.tab}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={() => {
+                  setShowConfirmation(false);
+                  setConfirmAction(null);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-pill-primary flex-1"
+                onClick={confirmSave}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      </>
       )}
     </Layout>
   );

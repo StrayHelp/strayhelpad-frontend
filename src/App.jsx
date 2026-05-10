@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { SettingsProvider } from './context/SettingsContext';
 
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
@@ -14,47 +15,49 @@ import './App.css';
 
 function App() {
   return (
-    <Router>
-      <Routes>
+    <SettingsProvider>
+      <Router>
+        <Routes>
 
-        <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<LoginPage />} />
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={(
-          <RequireAuth>
-            <DashboardPage />
-          </RequireAuth>
-        )} />
-        <Route path="/users" element={(
-          <RequireAuth>
-            <UsersPage />
-          </RequireAuth>
-        )} />
-        <Route path="/reports" element={(
-          <RequireAuth>
-            <ReportsPage />
-          </RequireAuth>
-        )} />
-        <Route path="/donations" element={(
-          <RequireAuth>
-            <DonationsPage />
-          </RequireAuth>
-        )} />
-        <Route path="/organizations" element={(
-          <RequireAuth>
-            <OrganizationsPage />
-          </RequireAuth>
-        )} />
-        <Route path="/settings" element={(
-          <RequireAuth>
-            <SettingsPage />
-          </RequireAuth>
-        )} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={(
+            <RequireAuth>
+              <DashboardPage />
+            </RequireAuth>
+          )} />
+          <Route path="/users" element={(
+            <RequireAuth>
+              <UsersPage />
+            </RequireAuth>
+          )} />
+          <Route path="/reports" element={(
+            <RequireAuth>
+              <ReportsPage />
+            </RequireAuth>
+          )} />
+          <Route path="/donations" element={(
+            <RequireAuth>
+              <DonationsPage />
+            </RequireAuth>
+          )} />
+          <Route path="/organizations" element={(
+            <RequireAuth>
+              <OrganizationsPage />
+            </RequireAuth>
+          )} />
+          <Route path="/settings" element={(
+            <RequireAuth>
+              <SettingsPage />
+            </RequireAuth>
+          )} />
 
-        <Route path="*" element={<Navigate to="/login" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
 
-      </Routes>
-    </Router>
+        </Routes>
+      </Router>
+    </SettingsProvider>
   );
 }
 
