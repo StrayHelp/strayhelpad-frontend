@@ -12,6 +12,18 @@ export async function updateSettings(settings) {
   return response.data;
 }
 
+// PUT /api/settings/profile
+export async function updateProfile(profileData) {
+  const response = await api.put('/settings/profile', profileData);
+  return response.data;
+}
+
+// PUT /api/settings/password
+export async function updatePassword(currentPassword, newPassword) {
+  const response = await api.put('/settings/password', { currentPassword, newPassword });
+  return response.data;
+}
+
 // GET /api/settings/recycle-bin
 export async function getRecycleBin() {
   const response = await api.get('/settings/recycle-bin');

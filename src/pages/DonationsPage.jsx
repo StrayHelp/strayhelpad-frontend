@@ -1,47 +1,53 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { fetchDonations } from '../services/adminService';
+import { useSettingsContext } from '../context/SettingsContext';
+import { formatCurrency, formatDate } from '../utils/formatters';
+import { useI18n } from '../hooks/useI18n';
 
 export const DonationsPage = () => {
+  const { settings } = useSettingsContext();
+  const { t, tl } = useI18n();
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const load = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchDonations();
+      setDonations(data.map((d) => ({
+        id: d.id,
+        name: d.donor_name,
+        org: d.organization_name || '—',
+        amount: formatCurrency(d.amount, settings),
+        method: d.payment_method ? tl(d.payment_method) : '—',
+        date: formatDate(d.created_at, settings)
+      })));
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || tl('Unable to load donations'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await fetchDonations();
-        setDonations(data.map((d) => ({
-          id: d.id,
-          name: d.donor_name,
-          org: d.organization_name || '—',
-          amount: `₱${Number(d.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`,
-          method: d.payment_method || '—',
-          date: new Date(d.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        })));
-      } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Unable to load donations');
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
-  }, []);
+  }, [settings?.system?.defaultLanguage, settings?.system?.timezone]);
 
   return (
-    <Layout title="Donations">
+    <Layout title={t('pageDonations', 'Donations')}>
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-[#4b5548]">Donation Transactions</h2>
-            <p className="mt-1 text-sm text-[#7a8476]">Total: {donations.length} transactions</p>
+            <h2 className="text-2xl font-semibold text-[#4b5548]">{t('donationTransactions', 'Donation Transactions')}</h2>
+            <p className="mt-1 text-sm text-[#7a8476]">{tl('Total:')} {donations.length} {tl('transactions')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm">
-              Export
+              {tl('Export')}
             </button>
           </div>
         </div>
@@ -50,7 +56,7 @@ export const DonationsPage = () => {
           <div className="relative w-full max-w-md">
             <input
               type="text"
-              placeholder="Search by donor name or organization"
+              placeholder={tl('Search by donor name or organization')}
               className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
@@ -61,21 +67,21 @@ export const DonationsPage = () => {
             </span>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Method</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Method')}</span>
             <select className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none">
-              <option>All</option>
-              <option>GCash</option>
-              <option>Card</option>
-              <option>Bank</option>
-              <option>Maya</option>
+              <option>{tl('All')}</option>
+              <option>{tl('GCash')}</option>
+              <option>{tl('Card')}</option>
+              <option>{tl('Bank')}</option>
+              <option>{tl('Maya')}</option>
             </select>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Date</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Date')}</span>
             <select className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none">
-              <option>Any time</option>
-              <option>Last 7 days</option>
-              <option>Last 30 days</option>
+              <option>{tl('Any time')}</option>
+              <option>{tl('Last 7 days')}</option>
+              <option>{tl('Last 30 days')}</option>
             </select>
           </div>
         </div>
@@ -89,18 +95,18 @@ export const DonationsPage = () => {
             <span>
               <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
             </span>
-            <span>Transaction ID</span>
-            <span>Donor</span>
-            <span>Organization</span>
-            <span>Method</span>
-            <span>Date</span>
-            <span className="text-right">Amount</span>
-            <span className="text-center">Actions</span>
+            <span>{tl('Transaction ID')}</span>
+            <span>{tl('Donor')}</span>
+            <span>{tl('Organization')}</span>
+            <span>{tl('Method')}</span>
+            <span>{tl('Date')}</span>
+            <span className="text-right">{tl('Amount')}</span>
+            <span className="text-center">{tl('Actions')}</span>
           </div>
           {loading ? (
-            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading donations…</div>
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading donations…')}</div>
           ) : donations.length === 0 ? (
-            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No donations found.</div>
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No donations found.')}</div>
           ) : donations.map((row, index) => (
             <div
               key={`${row.id}-${index}`}
@@ -120,7 +126,7 @@ export const DonationsPage = () => {
               <div className="flex items-center justify-center gap-2 text-[#77806d]">
                 <button
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#e2e6dc]"
-                  title="View transaction"
+                  title={tl('View transaction')}
                   onClick={() => setSelectedDonation(row)}
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -134,16 +140,16 @@ export const DonationsPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>Total: {donations.length} transactions</span>
+          <span>{tl('Total:')} {donations.length} {tl('transactions')}</span>
           <div className="flex items-center gap-2">
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
-              Prev
+              {tl('Prev')}
             </button>
             <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">1</button>
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">2</button>
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">3</button>
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
-              Next
+              {tl('Next')}
             </button>
           </div>
         </div>
@@ -158,26 +164,26 @@ export const DonationsPage = () => {
             onClick={(event) => event.stopPropagation()}
           >
             <div>
-              <p className="text-sm font-semibold text-[#9aa294]">Transaction Details</p>
+              <p className="text-sm font-semibold text-[#9aa294]">{tl('Transaction Details')}</p>
               <h3 className="mt-2 text-xl font-semibold text-[#4b5548]">{selectedDonation.id}</h3>
               <p className="text-sm text-[#7a8476]">{selectedDonation.name}</p>
             </div>
 
             <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
               <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">Organization</span>
+                <span className="text-[#9aa294]">{tl('Organization')}</span>
                 <span className="font-semibold text-[#4b5548]">{selectedDonation.org}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">Amount</span>
+                <span className="text-[#9aa294]">{tl('Amount')}</span>
                 <span className="font-semibold text-[#4b5548]">{selectedDonation.amount}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">Payment Method</span>
+                <span className="text-[#9aa294]">{tl('Payment Method')}</span>
                 <span className="font-semibold text-[#4b5548]">{selectedDonation.method}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">Date</span>
+                <span className="text-[#9aa294]">{tl('Date')}</span>
                 <span className="font-semibold text-[#4b5548]">{selectedDonation.date}</span>
               </div>
             </div>
@@ -188,7 +194,7 @@ export const DonationsPage = () => {
                 className="rounded-full border border-[#e2e6dc] px-4 py-2 text-sm font-semibold text-[#6c7669]"
                 onClick={() => setSelectedDonation(null)}
               >
-                Close
+                {tl('Close')}
               </button>
             </div>
           </div>

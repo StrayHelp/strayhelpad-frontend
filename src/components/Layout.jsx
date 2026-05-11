@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import strayHelpLogo from '../assets/StrayHelp-Logo-1.png';
+import { useSettingsContext } from '../context/SettingsContext';
+import { useI18n } from '../hooks/useI18n';
 
 export const Layout = ({ children, title }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
+  const { settings } = useSettingsContext();
+  const { t, tl } = useI18n();
+  const appName = settings?.system?.appName || 'StrayHelp';
   const adminName = typeof window !== 'undefined'
-    ? window.localStorage.getItem('adminName') || 'Admin User'
-    : 'Admin User';
+    ? window.localStorage.getItem('adminName') || settings?.profile?.adminName || tl('Admin User')
+    : tl('Admin User');
+  const adminEmail = typeof window !== 'undefined'
+    ? window.localStorage.getItem('adminEmail') || settings?.profile?.email || 'admin@strayhelp.com'
+    : 'admin@strayhelp.com';
+  const profilePicture = settings?.profile?.profilePicture || null;
 
   const handleLogout = () => {
     window.localStorage.removeItem('adminName');
     window.localStorage.removeItem('adminEmail');
+    window.localStorage.removeItem('authToken');
     setProfileOpen(false);
     navigate('/login');
   };
@@ -27,16 +37,16 @@ export const Layout = ({ children, title }) => {
         <div className="flex h-full w-full flex-col">
           <div className="flex items-baseline gap-2 px-6 py-6">
             <img src={strayHelpLogo} alt="StrayHelp logo" className="h-8 w-auto align-middle object-contain" />
-            {sidebarOpen && <span className="text-xl font-semibold leading-none tracking-tight">StrayHelp</span>}
+            {sidebarOpen && <span className="text-xl font-semibold leading-none tracking-tight">{appName}</span>}
           </div>
 
           <nav className="mt-2 space-y-1 px-3">
-            <SidebarItem to="/dashboard" label="Dashboard" open={sidebarOpen} icon={<SidebarIcon type="dashboard" />} />
-            <SidebarItem to="/users" label="Users" open={sidebarOpen} icon={<SidebarIcon type="users" />} />
-            <SidebarItem to="/reports" label="Reports" open={sidebarOpen} icon={<SidebarIcon type="reports" />} />
-            <SidebarItem to="/donations" label="Donations" open={sidebarOpen} icon={<SidebarIcon type="donations" />} />
-            <SidebarItem to="/organizations" label="Organizations" open={sidebarOpen} icon={<SidebarIcon type="organizations" />} />
-            <SidebarItem to="/settings" label="Settings" open={sidebarOpen} icon={<SidebarIcon type="settings" />} />
+            <SidebarItem to="/dashboard" label={t('navDashboard', 'Dashboard')} open={sidebarOpen} icon={<SidebarIcon type="dashboard" />} />
+            <SidebarItem to="/users" label={t('navUsers', 'Users')} open={sidebarOpen} icon={<SidebarIcon type="users" />} />
+            <SidebarItem to="/reports" label={t('navReports', 'Reports')} open={sidebarOpen} icon={<SidebarIcon type="reports" />} />
+            <SidebarItem to="/donations" label={t('navDonations', 'Donations')} open={sidebarOpen} icon={<SidebarIcon type="donations" />} />
+            <SidebarItem to="/organizations" label={t('navOrganizations', 'Organizations')} open={sidebarOpen} icon={<SidebarIcon type="organizations" />} />
+            <SidebarItem to="/settings" label={t('navSettings', 'Settings')} open={sidebarOpen} icon={<SidebarIcon type="settings" />} />
           </nav>
 
           <div className="mt-auto px-6 pb-6" />
@@ -60,7 +70,7 @@ export const Layout = ({ children, title }) => {
             <div className="relative hidden w-full max-w-md lg:block">
               <input
                 type="text"
-                placeholder="Search here"
+                placeholder={t('searchHere', 'Search here')}
                 className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
@@ -84,10 +94,14 @@ export const Layout = ({ children, title }) => {
                 aria-expanded={profileOpen}
                 aria-haspopup="menu"
               >
-                <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
+                {profilePicture ? (
+                  <img src={profilePicture} alt="Admin profile" className="h-9 w-9 rounded-full object-cover" />
+                ) : (
+                  <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
+                )}
                 <div className="text-left">
                   <p className="text-sm font-semibold text-[#4b5548]">{adminName}</p>
-                  <p className="text-xs text-[#9aa294]">Admin</p>
+                  <p className="text-xs text-[#9aa294]">{adminEmail}</p>
                 </div>
               </button>
 
@@ -102,7 +116,7 @@ export const Layout = ({ children, title }) => {
                     onClick={handleLogout}
                     className="w-full rounded-xl px-3 py-2 text-left transition hover:bg-[#f3f5ef]"
                   >
-                    Logout
+                    {t('logout', 'Logout')}
                   </button>
                 </div>
               )}

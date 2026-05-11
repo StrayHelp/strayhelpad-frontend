@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { fetchUsers } from '../services/adminService';
+import { deleteUser, fetchUsers, updateUserStatus } from '../services/adminService';
+import { useSettingsContext } from '../context/SettingsContext';
+import { formatDate } from '../utils/formatters';
+import { useI18n } from '../hooks/useI18n';
 
 export const UsersPage = () => {
+  const { settings } = useSettingsContext();
+  const { t, tl } = useI18n();
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [suspendConfirm, setSuspendConfirm] = useState(null);
   const [actionToast, setActionToast] = useState('');
@@ -10,28 +15,29 @@ export const UsersPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const loadUsers = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchUsers();
+      setUsers(data.map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        status: user.account_status || 'Active',
+        joined: formatDate(user.created_at, settings)
+      })));
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || tl('Unable to load users'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadUsers = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await fetchUsers();
-        setUsers(data.map((user) => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          status: user.account_status || 'Active',
-          joined: new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        })));
-      } catch (err) {
-        setError(err.response?.data?.message || err.message || 'Unable to load users');
-      } finally {
-        setLoading(false);
-      }
-    };
     loadUsers();
-  }, []);
+  }, [settings?.system?.defaultLanguage, settings?.system?.timezone]);
 
   const showActionToast = (message) => {
     setActionToast(message);
@@ -39,7 +45,7 @@ export const UsersPage = () => {
   };
 
   return (
-    <Layout title="Users">
+    <Layout title={t('pageUsers', 'Users')}>
       {actionToast && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -51,12 +57,12 @@ export const UsersPage = () => {
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-semibold text-[#4b5548]">User Directory</h2>
-            <p className="mt-1 text-sm text-[#7a8476]">Total users: {users.length}</p>
+            <h2 className="text-2xl font-semibold text-[#4b5548]">{t('usersDirectory', 'User Directory')}</h2>
+            <p className="mt-1 text-sm text-[#7a8476]">{tl('Total users')}: {users.length}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm">
-              Export
+              {tl('Export')}
             </button>
           </div>
         </div>
@@ -65,7 +71,7 @@ export const UsersPage = () => {
           <div className="relative w-full max-w-md">
             <input
               type="text"
-              placeholder="Search by name or email"
+              placeholder={tl('Search by name or email')}
               className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
@@ -76,11 +82,11 @@ export const UsersPage = () => {
             </span>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
-            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Status</span>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Status')}</span>
             <select className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none">
-              <option>All</option>
-              <option>Active</option>
-              <option>Suspended</option>
+              <option>{tl('All')}</option>
+              <option>{tl('Active')}</option>
+              <option>{tl('Suspended')}</option>
             </select>
           </div>
         </div>
@@ -94,16 +100,16 @@ export const UsersPage = () => {
             <span>
               <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
             </span>
-            <span>User ID</span>
-            <span>Profile</span>
-            <span>Status</span>
-            <span>Date Joined</span>
-            <span className="text-center">Actions</span>
+            <span>{tl('User ID')}</span>
+            <span>{tl('Profile')}</span>
+            <span>{tl('Status')}</span>
+            <span>{tl('Date Joined')}</span>
+            <span className="text-center">{tl('Actions')}</span>
           </div>
           {loading ? (
-            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">Loading users…</div>
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading users…')}</div>
           ) : users.length === 0 ? (
-            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">No users found.</div>
+            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No users found.')}</div>
           ) : users.map((user, index) => (
             <div
               key={`${user.id}-${index}`}
@@ -127,13 +133,13 @@ export const UsersPage = () => {
                     : 'bg-[#fbe9e9] text-[#b83a3a]'
                 }`}
               >
-                {user.status}
+                {tl(user.status)}
               </span>
               <span className="text-xs text-[#9aa294]">{user.joined}</span>
               <div className="flex items-center justify-center gap-2 text-[#77806d]">
                 <button
                   className="icon-btn"
-                  title={user.status === 'Active' ? 'Suspend user' : 'Activate user'}
+                  title={user.status === 'Active' ? tl('Suspend user') : tl('Activate user')}
                   onClick={() => setSuspendConfirm(user)}
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -143,7 +149,7 @@ export const UsersPage = () => {
                 </button>
                 <button
                   className="icon-btn text-[#a25d5d]"
-                  title="Delete user"
+                  title={tl('Delete user')}
                   onClick={() => setDeleteConfirm(user)}
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -160,16 +166,16 @@ export const UsersPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>Total: {users.length} users</span>
+          <span>{tl('Total:')} {users.length} {tl('users')}</span>
           <div className="flex items-center gap-2">
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
-              Prev
+              {tl('Prev')}
             </button>
             <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">1</button>
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">2</button>
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">3</button>
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
-              Next
+              {tl('Next')}
             </button>
           </div>
         </div>
@@ -186,13 +192,13 @@ export const UsersPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">Delete user?</h3>
-                <p className="text-sm text-[#9aa294]">This action cannot be undone.</p>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Delete user?')}</h3>
+                <p className="text-sm text-[#9aa294]">{tl('This action cannot be undone.')}</p>
               </div>
             </div>
 
             <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
-              <span className="font-semibold text-[#4b5548]">User:</span> {deleteConfirm.name} ({deleteConfirm.id})
+              <span className="font-semibold text-[#4b5548]">{tl('User:')}</span> {deleteConfirm.name} ({deleteConfirm.id})
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -201,17 +207,23 @@ export const UsersPage = () => {
                 className="btn-secondary flex-1"
                 onClick={() => setDeleteConfirm(null)}
               >
-                Cancel
+                {tl('Cancel')}
               </button>
               <button
                 type="button"
                 className="btn-pill-danger flex-1"
-                onClick={() => {
-                  showActionToast('✓ User deleted');
-                  setDeleteConfirm(null);
+                onClick={async () => {
+                  try {
+                    await deleteUser(deleteConfirm.id);
+                    showActionToast(`✓ ${tl('User moved to recycle bin')}`);
+                    await loadUsers();
+                    setDeleteConfirm(null);
+                  } catch (err) {
+                    setError(err.response?.data?.message || err.message || tl('Failed to delete user'));
+                  }
                 }}
               >
-                Delete
+                {tl('Delete')}
               </button>
             </div>
           </div>
@@ -230,14 +242,14 @@ export const UsersPage = () => {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-[#4b5548]">
-                  {suspendConfirm.status === 'Active' ? 'Suspend user?' : 'Activate user?'}
+                  {suspendConfirm.status === 'Active' ? tl('Suspend user?') : tl('Activate user?')}
                 </h3>
-                <p className="text-sm text-[#9aa294]">You can change this status again later.</p>
+                <p className="text-sm text-[#9aa294]">{tl('You can change this status again later.')}</p>
               </div>
             </div>
 
             <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
-              <span className="font-semibold text-[#4b5548]">User:</span> {suspendConfirm.name} ({suspendConfirm.id})
+              <span className="font-semibold text-[#4b5548]">{tl('User:')}</span> {suspendConfirm.name} ({suspendConfirm.id})
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -246,18 +258,24 @@ export const UsersPage = () => {
                 className="btn-secondary flex-1"
                 onClick={() => setSuspendConfirm(null)}
               >
-                Cancel
+                {tl('Cancel')}
               </button>
               <button
                 type="button"
                 className="btn-pill-primary flex-1"
-                onClick={() => {
-                  const nextAction = suspendConfirm.status === 'Active' ? 'suspended' : 'activated';
-                  showActionToast(`✓ User ${nextAction}`);
-                  setSuspendConfirm(null);
+                onClick={async () => {
+                  try {
+                    const nextStatus = suspendConfirm.status === 'Active' ? 'Suspended' : 'Active';
+                    await updateUserStatus(suspendConfirm.id, nextStatus);
+                    showActionToast(`✓ ${tl('User')} ${nextStatus === 'Suspended' ? tl('suspended') : tl('activated')}`);
+                    await loadUsers();
+                    setSuspendConfirm(null);
+                  } catch (err) {
+                    setError(err.response?.data?.message || err.message || tl('Failed to update user status'));
+                  }
                 }}
               >
-                {suspendConfirm.status === 'Active' ? 'Suspend' : 'Activate'}
+                {suspendConfirm.status === 'Active' ? tl('Suspend') : tl('Activate')}
               </button>
             </div>
           </div>

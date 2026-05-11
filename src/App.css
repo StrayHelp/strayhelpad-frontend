@@ -65,7 +65,7 @@ body {
   @apply bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476];
 }
 
-.table-row {
+.table-row-item {
   @apply border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8];
 }
 

@@ -18,10 +18,46 @@ export async function fetchUsers() {
   return response.data.users;
 }
 
+// PUT /api/admin/users/:id/status
+export async function updateUserStatus(userId, status) {
+  const response = await api.put(`/admin/users/${encodeURIComponent(userId)}/status`, { status });
+  return response.data.user;
+}
+
+// DELETE /api/admin/users/:id
+export async function deleteUser(userId) {
+  const response = await api.delete(`/admin/users/${encodeURIComponent(userId)}`);
+  return response.data.user;
+}
+
 // GET /api/admin/organizations
 export async function fetchOrganizations() {
   const response = await api.get('/admin/organizations');
   return response.data.organizations;
+}
+
+// PUT /api/admin/organizations/:id/status
+export async function updateOrganizationStatus(organizationId, status) {
+  const response = await api.put(`/admin/organizations/${encodeURIComponent(organizationId)}/status`, { status });
+  return response.data.organization;
+}
+
+// DELETE /api/admin/organizations/:id
+export async function deleteOrganization(organizationId) {
+  const response = await api.delete(`/admin/organizations/${encodeURIComponent(organizationId)}`);
+  return response.data.organization;
+}
+
+// POST /api/onboarding/:orgId/approve
+export async function approveOrganization(organizationId, notes = '') {
+  const response = await api.post(`/onboarding/${encodeURIComponent(organizationId)}/approve`, { notes });
+  return response.data.organization;
+}
+
+// POST /api/onboarding/:orgId/reject
+export async function rejectOrganization(organizationId, reason = 'Rejected by admin') {
+  const response = await api.post(`/onboarding/${encodeURIComponent(organizationId)}/reject`, { reason });
+  return response.data.organization;
 }
 
 // GET /api/admin/donations

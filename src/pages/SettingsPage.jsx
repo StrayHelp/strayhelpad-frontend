@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Layout } from '../components/Layout';
 import { useSettingsContext } from '../context/SettingsContext';
 import {
   getRecycleBin,
   restoreRecycleBinItem,
-  deleteRecycleBinItem
+  deleteRecycleBinItem,
+  updatePassword
 } from '../services/settingsService';
+import { useI18n } from '../hooks/useI18n';
 
 export const SettingsPage = () => {
+  const { t, tl } = useI18n();
   const {
     settings: contextSettings,
     loading: contextLoading,
@@ -23,6 +26,9 @@ export const SettingsPage = () => {
   const [recycleToast, setRecycleToast] = useState('');
   const [recycleLoading, setRecycleLoading] = useState(false);
   const [recycleError, setRecycleError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const profileFileInputRef = useRef(null);
   const [recycleBinData, setRecycleBinData] = useState({
     users: [],
     organizations: [],
@@ -36,6 +42,11 @@ export const SettingsPage = () => {
     email: 'admin@strayhelp.com',
     profilePicture: null,
     showChangePassword: false,
+  });
+  const [profilePasswordData, setProfilePasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
   });
   const [profileChanges, setProfileChanges] = useState({});
 
@@ -86,6 +97,11 @@ export const SettingsPage = () => {
     enable2FA: false,
     sessionTimeout: '30',
   });
+  const [securityPasswordData, setSecurityPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
   const [securityChanges, setSecurityChanges] = useState({});
 
   // Initialize from context settings
@@ -95,10 +111,12 @@ export const SettingsPage = () => {
 
   useEffect(() => {
     if (contextSettings) {
+      const loginEmail = typeof window !== 'undefined' ? window.localStorage.getItem('adminEmail') : '';
       if (contextSettings.profile) {
         setProfileData((prev) => ({
           ...prev,
           ...contextSettings.profile,
+          email: (loginEmail && String(loginEmail).trim()) || contextSettings.profile.email || prev.email,
           adminName: contextSettings.profile.adminName && String(contextSettings.profile.adminName).trim().length > 0
             ? contextSettings.profile.adminName
             : prev.adminName
@@ -112,6 +130,12 @@ export const SettingsPage = () => {
     }
   }, [contextSettings]);
 
+  useEffect(() => {
+    if (contextSettings?.system?.defaultLanguage) {
+      document.documentElement.lang = contextSettings.system.defaultLanguage;
+    }
+  }, [contextSettings?.system?.defaultLanguage]);
+
   const loadRecycleBin = async () => {
     try {
       setRecycleLoading(true);
@@ -124,7 +148,7 @@ export const SettingsPage = () => {
         donationDrives: []
       });
     } catch (error) {
-      setRecycleError(error?.response?.data?.message || error.message || 'Failed to load recycle bin');
+      setRecycleError(error?.response?.data?.message || error.message || tl('Failed to load recycle bin'));
     } finally {
       setRecycleLoading(false);
     }
@@ -186,8 +210,44 @@ export const SettingsPage = () => {
   };
 
   const showSuccess = () => {
-    setSuccessMessage('✓ Settings saved successfully');
+    setSuccessMessage(`✓ ${tl('Settings saved successfully')}`);
     setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  const handleProfilePictureUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      handleProfileChange('profilePicture', reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const maybeUpdatePassword = async (passwordData, onSuccess) => {
+    const currentPassword = String(passwordData.currentPassword || '').trim();
+    const newPassword = String(passwordData.newPassword || '').trim();
+    const confirmPassword = String(passwordData.confirmPassword || '').trim();
+
+    if (!currentPassword && !newPassword && !confirmPassword) {
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      throw new Error(tl('Please fill out current, new, and confirm password fields.'));
+    }
+    if (newPassword.length < 8) {
+      throw new Error(tl('New password must be at least 8 characters long.'));
+    }
+    if (newPassword !== confirmPassword) {
+      throw new Error(tl('New password and confirm password do not match.'));
+    }
+
+    await updatePassword(currentPassword, newPassword);
+    onSuccess();
   };
 
   const showRecycleToast = (message) => {
@@ -205,10 +265,13 @@ export const SettingsPage = () => {
   const confirmSave = async () => {
     if (confirmAction) {
       try {
+        setPasswordError('');
+        setPasswordSuccess('');
         const settingsUpdate = {};
         if (confirmAction.tab === 'profile') {
           settingsUpdate.profile = {
             ...profileData,
+            email: String(profileData.email || '').trim(),
             adminName: String(profileData.adminName || '').trim()
           };
         }
@@ -219,11 +282,31 @@ export const SettingsPage = () => {
         if (confirmAction.tab === 'security') settingsUpdate.security = securityData;
 
         await contextUpdateSettings(settingsUpdate);
+
+        if (confirmAction.tab === 'profile') {
+          window.localStorage.setItem('adminName', settingsUpdate.profile.adminName || 'Admin User');
+          window.localStorage.setItem('adminEmail', settingsUpdate.profile.email || 'admin@strayhelp.com');
+          await maybeUpdatePassword(profilePasswordData, () => {
+            setProfilePasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            setPasswordSuccess(`✓ ${tl('Password updated successfully')}`);
+            setTimeout(() => setPasswordSuccess(''), 3000);
+          });
+        }
+
+        if (confirmAction.tab === 'security') {
+          await maybeUpdatePassword(securityPasswordData, () => {
+            setSecurityPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+            setPasswordSuccess(`✓ ${tl('Password updated successfully')}`);
+            setTimeout(() => setPasswordSuccess(''), 3000);
+          });
+        }
+
         confirmAction.resetChanges();
         showSuccess();
       } catch (error) {
         console.error('Failed to save settings:', error);
-        setSuccessMessage('✗ Failed to save settings');
+        setPasswordError(error?.response?.data?.message || error.message || tl('Failed to update password'));
+        setSuccessMessage(`✗ ${tl('Failed to save settings')}`);
         setTimeout(() => setSuccessMessage(''), 3000);
       }
     }
@@ -251,9 +334,9 @@ export const SettingsPage = () => {
         if (response.recycleBin) {
           setRecycleBinData(response.recycleBin);
         }
-        showRecycleToast(`✓ ${deleteConfirm.type} deleted forever`);
+        showRecycleToast(`✓ ${tl(deleteConfirm.type)} ${tl('deleted forever')}`);
       } catch (error) {
-        setRecycleError(error?.response?.data?.message || error.message || 'Failed to delete recycle bin item');
+        setRecycleError(error?.response?.data?.message || error.message || tl('Failed to delete recycle bin item'));
       } finally {
         setDeleteConfirm(null);
       }
@@ -282,9 +365,9 @@ export const SettingsPage = () => {
         if (response.recycleBin) {
           setRecycleBinData(response.recycleBin);
         }
-        showRecycleToast(`✓ ${restoreConfirm.type} restored`);
+        showRecycleToast(`✓ ${tl(restoreConfirm.type)} ${tl('restored')}`);
       } catch (error) {
-        setRecycleError(error?.response?.data?.message || error.message || 'Failed to restore recycle bin item');
+        setRecycleError(error?.response?.data?.message || error.message || tl('Failed to restore recycle bin item'));
       } finally {
         setRestoreConfirm(null);
       }
@@ -295,20 +378,20 @@ export const SettingsPage = () => {
 
   // Tabs Configuration
   const tabs = [
-    { id: 'profile', label: 'Profile', icon: 'profile' },
-    { id: 'system', label: 'System', icon: 'system' },
-    { id: 'users', label: 'Users', icon: 'users' },
-    { id: 'organization', label: 'Organization', icon: 'organization' },
-    { id: 'donation', label: 'Donations', icon: 'donations' },
-    { id: 'security', label: 'Security', icon: 'security' },
-    { id: 'recycle', label: 'Recycle Bin', icon: 'deleted' },
+    { id: 'profile', label: t('settingsTabProfile', 'Profile'), icon: 'profile' },
+    { id: 'system', label: t('settingsTabSystem', 'System'), icon: 'system' },
+    { id: 'users', label: t('settingsTabUsers', 'Users'), icon: 'users' },
+    { id: 'organization', label: t('settingsTabOrganization', 'Organization'), icon: 'organization' },
+    { id: 'donation', label: t('settingsTabDonations', 'Donations'), icon: 'donations' },
+    { id: 'security', label: t('settingsTabSecurity', 'Security'), icon: 'security' },
+    { id: 'recycle', label: t('settingsTabRecycle', 'Recycle Bin'), icon: 'deleted' },
   ];
 
   return (
-    <Layout title="Settings">
+    <Layout title={t('pageSettings', 'Settings')}>
       {contextLoading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="text-[#9aa294]">Loading settings...</div>
+          <div className="text-[#9aa294]">{t('settingsLoading', 'Loading settings...')}</div>
         </div>
       ) : (
       <>
@@ -320,6 +403,18 @@ export const SettingsPage = () => {
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
             {successMessage}
+          </div>
+        )}
+
+        {passwordSuccess && (
+          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {passwordSuccess}
+          </div>
+        )}
+
+        {passwordError && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {passwordError}
           </div>
         )}
 
@@ -346,28 +441,40 @@ export const SettingsPage = () => {
         {/* Profile Settings */}
         {activeTab === 'profile' && (
           <div className="space-y-6">
-            <SettingSection title="Profile Settings" description="Manage your admin profile information">
+            <SettingSection title={tl('Profile Settings')} description={tl('Manage your admin profile information')}>
               <div className="space-y-4">
                 {/* Profile Picture */}
                 <div>
-                  <label className="form-label">Profile Picture</label>
+                  <label className="form-label">{tl('Profile Picture')}</label>
                   <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full bg-[#e6eadf]" />
+                    {profileData.profilePicture ? (
+                      <img src={profileData.profilePicture} alt="Admin profile" className="h-16 w-16 rounded-full object-cover" />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-[#e6eadf]" />
+                    )}
                     <button
                       type="button"
                       className="btn-secondary flex items-center gap-2"
+                      onClick={() => profileFileInputRef.current?.click()}
                     >
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                       </svg>
-                      Upload Picture
+                      {tl('Upload Picture')}
                     </button>
+                    <input
+                      ref={profileFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleProfilePictureUpload}
+                    />
                   </div>
                 </div>
 
                 {/* Admin Name */}
                 <div>
-                  <label className="form-label">Admin Name</label>
+                  <label className="form-label">{tl('Admin Name')}</label>
                   <input
                     type="text"
                     value={profileData.adminName}
@@ -378,7 +485,7 @@ export const SettingsPage = () => {
 
                 {/* Email */}
                 <div>
-                  <label className="form-label">Email Address</label>
+                  <label className="form-label">{tl('Email Address')}</label>
                   <input
                     type="email"
                     value={profileData.email}
@@ -397,24 +504,30 @@ export const SettingsPage = () => {
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                     </svg>
-                    Change Password
+                    {tl('Change Password')}
                   </button>
                   {profileData.showChangePassword && (
                     <div className="mt-3 space-y-3 rounded-lg bg-[#f9faf8] p-4">
                       <input
                         type="password"
-                        placeholder="Current password"
+                        placeholder={tl('Current password')}
                         className="form-input text-sm"
+                        value={profilePasswordData.currentPassword}
+                        onChange={(e) => setProfilePasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))}
                       />
                       <input
                         type="password"
-                        placeholder="New password"
+                        placeholder={tl('New password')}
                         className="form-input text-sm"
+                        value={profilePasswordData.newPassword}
+                        onChange={(e) => setProfilePasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
                       />
                       <input
                         type="password"
-                        placeholder="Confirm password"
+                        placeholder={tl('Confirm password')}
                         className="form-input text-sm"
+                        value={profilePasswordData.confirmPassword}
+                        onChange={(e) => setProfilePasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                       />
                     </div>
                   )}
@@ -426,10 +539,15 @@ export const SettingsPage = () => {
             <div className="flex justify-end">
               <button
                 onClick={() => handleSave('profile', profileChanges, () => setProfileChanges({}))}
-                disabled={!Object.values(profileChanges).some(v => v)}
+                disabled={
+                  !Object.values(profileChanges).some(v => v) &&
+                  !profilePasswordData.currentPassword &&
+                  !profilePasswordData.newPassword &&
+                  !profilePasswordData.confirmPassword
+                }
                 className="btn-primary"
               >
-                Save Changes
+                {tl('Save Changes')}
               </button>
             </div>
           </div>
@@ -438,11 +556,11 @@ export const SettingsPage = () => {
         {/* System Settings */}
         {activeTab === 'system' && (
           <div className="space-y-6">
-            <SettingSection title="System Settings" description="Configure application-wide settings">
+            <SettingSection title={tl('System Settings')} description={tl('Configure application-wide settings')}>
               <div className="space-y-4">
                 {/* App Name */}
                 <div>
-                  <label className="form-label">Application Name</label>
+                  <label className="form-label">{tl('Application Name')}</label>
                   <input
                     type="text"
                     value={systemData.appName}
@@ -453,21 +571,21 @@ export const SettingsPage = () => {
 
                 {/* Default Language */}
                 <div>
-                  <label className="form-label">Default Language</label>
+                  <label className="form-label">{tl('Default Language')}</label>
                   <select
                     value={systemData.defaultLanguage}
                     onChange={(e) => handleSystemChange('defaultLanguage', e.target.value)}
                     className="form-select"
                   >
-                    <option value="en">English</option>
-                    <option value="fil">Filipino</option>
-                    <option value="es">Spanish</option>
+                    <option value="en">{tl('English')}</option>
+                    <option value="fil">{tl('Filipino')}</option>
+                    <option value="es">{tl('Spanish')}</option>
                   </select>
                 </div>
 
                 {/* Timezone */}
                 <div>
-                  <label className="form-label">Timezone</label>
+                  <label className="form-label">{tl('Timezone')}</label>
                   <select
                     value={systemData.timezone}
                     onChange={(e) => handleSystemChange('timezone', e.target.value)}
@@ -481,7 +599,7 @@ export const SettingsPage = () => {
 
                 {/* Enable Notifications */}
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-[#4b5548]">Enable Notifications</label>
+                  <label className="text-sm font-medium text-[#4b5548]">{tl('Enable Notifications')}</label>
                   <Toggle
                     checked={systemData.enableNotifications}
                     onChange={(checked) => handleSystemChange('enableNotifications', checked)}
@@ -497,7 +615,7 @@ export const SettingsPage = () => {
                 disabled={!Object.values(systemChanges).some(v => v)}
                 className="btn-primary"
               >
-                Save Changes
+                {tl('Save Changes')}
               </button>
             </div>
           </div>
@@ -506,13 +624,13 @@ export const SettingsPage = () => {
         {/* User Management Settings */}
         {activeTab === 'users' && (
           <div className="space-y-6">
-            <SettingSection title="User Management Settings" description="Control user registration and verification processes">
+            <SettingSection title={tl('User Management Settings')} description={tl('Control user registration and verification processes')}>
               <div className="space-y-4">
                 {/* Allow Registration */}
                 <div className="toggle-card">
                   <div>
-                    <p className="font-medium text-[#4b5548]">Allow User Registration</p>
-                    <p className="text-xs text-[#9aa294]">Enable or disable new user sign-ups</p>
+                    <p className="font-medium text-[#4b5548]">{tl('Allow User Registration')}</p>
+                    <p className="text-xs text-[#9aa294]">{tl('Enable or disable new user sign-ups')}</p>
                   </div>
                   <Toggle
                     checked={userMgmtData.allowRegistration}
@@ -523,8 +641,8 @@ export const SettingsPage = () => {
                 {/* Enable Verification */}
                 <div className="toggle-card">
                   <div>
-                    <p className="font-medium text-[#4b5548]">Enable Account Verification</p>
-                    <p className="text-xs text-[#9aa294]">Require email verification for new accounts</p>
+                    <p className="font-medium text-[#4b5548]">{tl('Enable Account Verification')}</p>
+                    <p className="text-xs text-[#9aa294]">{tl('Require email verification for new accounts')}</p>
                   </div>
                   <Toggle
                     checked={userMgmtData.enableVerification}
@@ -535,8 +653,8 @@ export const SettingsPage = () => {
                 {/* Auto-suspend */}
                 <div className="toggle-card">
                   <div>
-                    <p className="font-medium text-[#4b5548]">Auto-suspend Flagged Users</p>
-                    <p className="text-xs text-[#9aa294]">Automatically suspend users with multiple reports</p>
+                    <p className="font-medium text-[#4b5548]">{tl('Auto-suspend Flagged Users')}</p>
+                    <p className="text-xs text-[#9aa294]">{tl('Automatically suspend users with multiple reports')}</p>
                   </div>
                   <Toggle
                     checked={userMgmtData.autoSuspend}
@@ -553,7 +671,7 @@ export const SettingsPage = () => {
                 disabled={!Object.values(userMgmtChanges).some(v => v)}
                 className="btn-primary"
               >
-                Save Changes
+                {tl('Save Changes')}
               </button>
             </div>
           </div>
@@ -562,28 +680,28 @@ export const SettingsPage = () => {
         {/* Organization (KYC) Settings */}
         {activeTab === 'organization' && (
           <div className="space-y-6">
-            <SettingSection title="Organization (KYC) Settings" description="Configure KYC requirements for organization verification">
+            <SettingSection title={tl('Organization (KYC) Settings')} description={tl('Configure KYC requirements for organization verification')}>
               <div className="space-y-6">
                 {/* Required Documents */}
                 <div>
-                  <h4 className="mb-4 font-medium text-[#4b5548]">Required Documents</h4>
+                  <h4 className="mb-4 font-medium text-[#4b5548]">{tl('Required Documents')}</h4>
                   <div className="space-y-3">
                     <div className="toggle-card">
-                      <label className="text-sm font-medium text-[#4b5548]">Business Permit</label>
+                      <label className="text-sm font-medium text-[#4b5548]">{tl('Business Permit')}</label>
                       <Toggle
                         checked={orgData.requiredDocs.businessPermit}
                         onChange={(checked) => handleOrgChange('requiredDocs.businessPermit', checked)}
                       />
                     </div>
                     <div className="toggle-card">
-                      <label className="text-sm font-medium text-[#4b5548]">Valid ID</label>
+                      <label className="text-sm font-medium text-[#4b5548]">{tl('Valid ID')}</label>
                       <Toggle
                         checked={orgData.requiredDocs.validId}
                         onChange={(checked) => handleOrgChange('requiredDocs.validId', checked)}
                       />
                     </div>
                     <div className="toggle-card">
-                      <label className="text-sm font-medium text-[#4b5548]">Proof of Legitimacy</label>
+                      <label className="text-sm font-medium text-[#4b5548]">{tl('Proof of Legitimacy')}</label>
                       <Toggle
                         checked={orgData.requiredDocs.proofLegitimacy}
                         onChange={(checked) => handleOrgChange('requiredDocs.proofLegitimacy', checked)}
@@ -595,8 +713,8 @@ export const SettingsPage = () => {
                 {/* Manual Approval */}
                 <div className="toggle-card">
                   <div>
-                    <p className="font-medium text-[#4b5548]">Require Manual Approval</p>
-                    <p className="text-xs text-[#9aa294]">All KYC submissions require admin review</p>
+                    <p className="font-medium text-[#4b5548]">{tl('Require Manual Approval')}</p>
+                    <p className="text-xs text-[#9aa294]">{tl('All KYC submissions require admin review')}</p>
                   </div>
                   <Toggle
                     checked={orgData.requireManualApproval}
@@ -606,7 +724,7 @@ export const SettingsPage = () => {
 
                 {/* Review Guidelines */}
                 <div>
-                  <label className="form-label">Review Guidelines (Optional)</label>
+                  <label className="form-label">{tl('Review Guidelines (Optional)')}</label>
                   <textarea
                     value={orgData.reviewGuidelines}
                     onChange={(e) => handleOrgChange('reviewGuidelines', e.target.value)}
@@ -624,7 +742,7 @@ export const SettingsPage = () => {
                 disabled={!Object.values(orgChanges).some(v => v)}
                 className="btn-primary"
               >
-                Save Changes
+                {tl('Save Changes')}
               </button>
             </div>
           </div>
@@ -633,13 +751,13 @@ export const SettingsPage = () => {
         {/* Donation Settings */}
         {activeTab === 'donation' && (
           <div className="space-y-6">
-            <SettingSection title="Donation Settings" description="Configure donation features and payment methods">
+            <SettingSection title={tl('Donation Settings')} description={tl('Configure donation features and payment methods')}>
               <div className="space-y-6">
                 {/* Enable Donations */}
                 <div className="toggle-card">
                   <div>
-                    <p className="font-medium text-[#4b5548]">Enable Donations</p>
-                    <p className="text-xs text-[#9aa294]">Allow users to make donations</p>
+                    <p className="font-medium text-[#4b5548]">{tl('Enable Donations')}</p>
+                    <p className="text-xs text-[#9aa294]">{tl('Allow users to make donations')}</p>
                   </div>
                   <Toggle
                     checked={donationData.enableDonations}
@@ -649,24 +767,24 @@ export const SettingsPage = () => {
 
                 {/* Payment Methods */}
                 <div>
-                  <h4 className="mb-4 font-medium text-[#4b5548]">Supported Payment Methods</h4>
+                  <h4 className="mb-4 font-medium text-[#4b5548]">{tl('Supported Payment Methods')}</h4>
                   <div className="space-y-3">
                     <div className="toggle-card">
-                      <label className="text-sm font-medium text-[#4b5548]">GCash</label>
+                      <label className="text-sm font-medium text-[#4b5548]">{tl('GCash')}</label>
                       <Toggle
                         checked={donationData.paymentMethods.gcash}
                         onChange={(checked) => handleDonationChange('paymentMethods.gcash', checked)}
                       />
                     </div>
                     <div className="toggle-card">
-                      <label className="text-sm font-medium text-[#4b5548]">Bank Transfer</label>
+                      <label className="text-sm font-medium text-[#4b5548]">{tl('Bank Transfer')}</label>
                       <Toggle
                         checked={donationData.paymentMethods.bankTransfer}
                         onChange={(checked) => handleDonationChange('paymentMethods.bankTransfer', checked)}
                       />
                     </div>
                     <div className="toggle-card">
-                      <label className="text-sm font-medium text-[#4b5548]">Card</label>
+                      <label className="text-sm font-medium text-[#4b5548]">{tl('Card')}</label>
                       <Toggle
                         checked={donationData.paymentMethods.card}
                         onChange={(checked) => handleDonationChange('paymentMethods.card', checked)}
@@ -677,7 +795,7 @@ export const SettingsPage = () => {
 
                 {/* Minimum Donation */}
                 <div>
-                  <label className="form-label">Minimum Donation Amount (₱)</label>
+                  <label className="form-label">{tl('Minimum Donation Amount (P)')}</label>
                   <input
                     type="number"
                     value={donationData.minimumAmount}
@@ -697,7 +815,7 @@ export const SettingsPage = () => {
                 disabled={!Object.values(donationChanges).some(v => v)}
                 className="btn-primary"
               >
-                Save Changes
+                {tl('Save Changes')}
               </button>
             </div>
           </div>
@@ -706,7 +824,7 @@ export const SettingsPage = () => {
         {/* Security Settings */}
         {activeTab === 'security' && (
           <div className="space-y-6">
-            <SettingSection title="Security Settings" description="Manage password and security preferences">
+            <SettingSection title={tl('Security Settings')} description={tl('Manage password and security preferences')}>
               <div className="space-y-4">
                 {/* Change Password */}
                 <div>
@@ -718,24 +836,30 @@ export const SettingsPage = () => {
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                     </svg>
-                    Change Password
+                    {tl('Change Password')}
                   </button>
                   {securityData.showChangePassword && (
                     <div className="mt-3 space-y-3 rounded-lg bg-[#f9faf8] p-4">
                       <input
                         type="password"
-                        placeholder="Current password"
+                        placeholder={tl('Current password')}
                         className="form-input text-sm"
+                        value={securityPasswordData.currentPassword}
+                        onChange={(e) => setSecurityPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))}
                       />
                       <input
                         type="password"
-                        placeholder="New password"
+                        placeholder={tl('New password')}
                         className="form-input text-sm"
+                        value={securityPasswordData.newPassword}
+                        onChange={(e) => setSecurityPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
                       />
                       <input
                         type="password"
-                        placeholder="Confirm password"
+                        placeholder={tl('Confirm password')}
                         className="form-input text-sm"
+                        value={securityPasswordData.confirmPassword}
+                        onChange={(e) => setSecurityPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
                       />
                     </div>
                   )}
@@ -744,8 +868,8 @@ export const SettingsPage = () => {
                 {/* 2FA */}
                 <div className="toggle-card">
                   <div>
-                    <p className="font-medium text-[#4b5548]">Two-Factor Authentication</p>
-                    <p className="text-xs text-[#9aa294]">Add an extra layer of security</p>
+                    <p className="font-medium text-[#4b5548]">{tl('Two-Factor Authentication')}</p>
+                    <p className="text-xs text-[#9aa294]">{tl('Add an extra layer of security')}</p>
                   </div>
                   <Toggle
                     checked={securityData.enable2FA}
@@ -755,7 +879,7 @@ export const SettingsPage = () => {
 
                 {/* Session Timeout */}
                 <div>
-                  <label className="form-label">Session Timeout (minutes)</label>
+                  <label className="form-label">{tl('Session Timeout (minutes)')}</label>
                   <input
                     type="number"
                     value={securityData.sessionTimeout}
@@ -764,7 +888,7 @@ export const SettingsPage = () => {
                     max="1440"
                     className="form-input"
                   />
-                  <p className="mt-1 text-xs text-[#9aa294]">Automatically log out after this period of inactivity</p>
+                  <p className="mt-1 text-xs text-[#9aa294]">{tl('Automatically log out after this period of inactivity')}</p>
                 </div>
               </div>
             </SettingSection>
@@ -773,10 +897,15 @@ export const SettingsPage = () => {
             <div className="flex justify-end">
               <button
                 onClick={() => handleSave('security', securityChanges, () => setSecurityChanges({}))}
-                disabled={!Object.values(securityChanges).some(v => v)}
+                disabled={
+                  !Object.values(securityChanges).some(v => v) &&
+                  !securityPasswordData.currentPassword &&
+                  !securityPasswordData.newPassword &&
+                  !securityPasswordData.confirmPassword
+                }
                 className="btn-primary"
               >
-                Save Changes
+                {tl('Save Changes')}
               </button>
             </div>
           </div>
@@ -785,20 +914,20 @@ export const SettingsPage = () => {
         {/* Deleted Accounts */}
         {activeTab === 'recycle' && (
           <div className="space-y-6">
-            <SettingSection title="Recycle Bin" description="Manage deleted users, organizations, and reports">
+            <SettingSection title={tl('Recycle Bin')} description={tl('Manage deleted users, organizations, and reports')}>
               <div className="space-y-6">
                 <div>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Users</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.users.length}</span>
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Users')}</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.users.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
-                      <span>User ID</span>
-                      <span>Profile</span>
-                      <span>Type</span>
-                      <span>Date Deleted</span>
-                      <span className="pr-2 text-right">Actions</span>
+                      <span>{tl('User ID')}</span>
+                      <span>{tl('Profile')}</span>
+                      <span>{tl('Type')}</span>
+                      <span>{tl('Date Deleted')}</span>
+                      <span className="pr-2 text-right">{tl('Actions')}</span>
                     </div>
                     {recycleBinData.users.map((user, index) => (
                       <div
@@ -810,7 +939,7 @@ export const SettingsPage = () => {
                           <p className="font-semibold text-[#4b5548]">{user.name}</p>
                           <p className="text-xs text-[#9aa294]">{user.email}</p>
                         </div>
-                        <span className="text-xs text-[#9aa294]">User</span>
+                        <span className="text-xs text-[#9aa294]">{tl('User')}</span>
                         <span className="text-xs text-[#9aa294]">{user.deleted}</span>
                         <div className="flex items-center justify-end gap-2 pr-2">
                           <button
@@ -822,7 +951,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'users'
                             })}
                           >
-                            Restore
+                            {tl('Restore')}
                           </button>
                           <button
                             className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
@@ -833,7 +962,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'users'
                             })}
                           >
-                            Delete
+                            {tl('Delete')}
                           </button>
                         </div>
                       </div>
@@ -843,16 +972,16 @@ export const SettingsPage = () => {
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Organizations</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.organizations.length}</span>
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Organizations')}</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.organizations.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
-                      <span>Org ID</span>
-                      <span>Organization</span>
-                      <span>Type</span>
-                      <span>Date Deleted</span>
-                      <span className="pr-2 text-right">Actions</span>
+                      <span>{tl('Org ID')}</span>
+                      <span>{tl('Organization')}</span>
+                      <span>{tl('Type')}</span>
+                      <span>{tl('Date Deleted')}</span>
+                      <span className="pr-2 text-right">{tl('Actions')}</span>
                     </div>
                     {recycleBinData.organizations.map((org, index) => (
                       <div
@@ -864,7 +993,7 @@ export const SettingsPage = () => {
                           <p className="font-semibold text-[#4b5548]">{org.name}</p>
                           <p className="text-xs text-[#9aa294]">{org.contactEmail}</p>
                         </div>
-                        <span className="text-xs text-[#9aa294]">Organization</span>
+                        <span className="text-xs text-[#9aa294]">{tl('Organization')}</span>
                         <span className="text-xs text-[#9aa294]">{org.deleted}</span>
                         <div className="flex items-center justify-end gap-2 pr-2">
                           <button
@@ -876,7 +1005,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'organizations'
                             })}
                           >
-                            Restore
+                            {tl('Restore')}
                           </button>
                           <button
                             className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
@@ -887,7 +1016,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'organizations'
                             })}
                           >
-                            Delete
+                            {tl('Delete')}
                           </button>
                         </div>
                       </div>
@@ -897,16 +1026,16 @@ export const SettingsPage = () => {
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Reports</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.reports.length}</span>
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Reports')}</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.reports.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
-                      <span>Report ID</span>
-                      <span>Report</span>
-                      <span>Category</span>
-                      <span>Date Deleted</span>
-                      <span className="pr-2 text-right">Actions</span>
+                      <span>{tl('Report ID')}</span>
+                      <span>{tl('Report')}</span>
+                      <span>{tl('Category')}</span>
+                      <span>{tl('Date Deleted')}</span>
+                      <span className="pr-2 text-right">{tl('Actions')}</span>
                     </div>
                     {recycleBinData.reports.map((report, index) => (
                       <div
@@ -927,7 +1056,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'reports'
                             })}
                           >
-                            Restore
+                            {tl('Restore')}
                           </button>
                           <button
                             className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
@@ -938,7 +1067,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'reports'
                             })}
                           >
-                            Delete
+                            {tl('Delete')}
                           </button>
                         </div>
                       </div>
@@ -948,16 +1077,16 @@ export const SettingsPage = () => {
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">Deleted Donation Drives</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">Total: {recycleBinData.donationDrives.length}</span>
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Donation Drives')}</h4>
+                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.donationDrives.length}</span>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
-                      <span>Drive ID</span>
-                      <span>Donation Drive</span>
-                      <span>Type</span>
-                      <span>Date Deleted</span>
-                      <span className="pr-2 text-right">Actions</span>
+                      <span>{tl('Drive ID')}</span>
+                      <span>{tl('Donation Drive')}</span>
+                      <span>{tl('Type')}</span>
+                      <span>{tl('Date Deleted')}</span>
+                      <span className="pr-2 text-right">{tl('Actions')}</span>
                     </div>
                     {recycleBinData.donationDrives.map((drive, index) => (
                       <div
@@ -969,7 +1098,7 @@ export const SettingsPage = () => {
                           <p className="font-semibold text-[#4b5548]">{drive.title}</p>
                           <p className="text-xs text-[#9aa294]">{drive.organization}</p>
                         </div>
-                        <span className="text-xs text-[#9aa294]">Donation drive</span>
+                        <span className="text-xs text-[#9aa294]">{tl('Donation drive')}</span>
                         <span className="text-xs text-[#9aa294]">{drive.deleted}</span>
                         <div className="flex items-center justify-end gap-2 pr-2">
                           <button
@@ -981,7 +1110,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'donationDrives'
                             })}
                           >
-                            Restore
+                            {tl('Restore')}
                           </button>
                           <button
                             className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
@@ -992,7 +1121,7 @@ export const SettingsPage = () => {
                               itemTypeKey: 'donationDrives'
                             })}
                           >
-                            Delete
+                            {tl('Delete')}
                           </button>
                         </div>
                       </div>
@@ -1001,7 +1130,7 @@ export const SettingsPage = () => {
                 </div>
 
                 {recycleLoading && (
-                  <p className="text-sm text-[#7a8476]">Loading recycle bin...</p>
+                  <p className="text-sm text-[#7a8476]">{tl('Loading recycle bin...')}</p>
                 )}
 
                 {recycleError && (
@@ -1029,8 +1158,8 @@ export const SettingsPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">Delete forever?</h3>
-                <p className="text-sm text-[#9aa294]">This action cannot be undone.</p>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Delete forever?')}</h3>
+                <p className="text-sm text-[#9aa294]">{tl('This action cannot be undone.')}</p>
               </div>
             </div>
 
@@ -1044,14 +1173,14 @@ export const SettingsPage = () => {
                 className="btn-secondary flex-1"
                 onClick={closeDeleteConfirm}
               >
-                Cancel
+                {tl('Cancel')}
               </button>
               <button
                 type="button"
                 className="btn-pill-danger flex-1"
                 onClick={confirmDelete}
               >
-                Delete forever
+                {tl('Delete forever')}
               </button>
             </div>
           </div>
@@ -1069,8 +1198,8 @@ export const SettingsPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">Restore account?</h3>
-                <p className="text-sm text-[#9aa294]">This will return the item to its active list.</p>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Restore account?')}</h3>
+                <p className="text-sm text-[#9aa294]">{tl('This will return the item to its active list.')}</p>
               </div>
             </div>
 
@@ -1084,14 +1213,14 @@ export const SettingsPage = () => {
                 className="btn-secondary flex-1"
                 onClick={closeRestoreConfirm}
               >
-                Cancel
+                {tl('Cancel')}
               </button>
               <button
                 type="button"
                 className="btn-pill-primary flex-1"
                 onClick={confirmRestore}
               >
-                Restore
+                {tl('Restore')}
               </button>
             </div>
           </div>
@@ -1109,13 +1238,13 @@ export const SettingsPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">Save changes?</h3>
-                <p className="text-sm text-[#9aa294]">This will update the saved settings for this section.</p>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Save changes?')}</h3>
+                <p className="text-sm text-[#9aa294]">{tl('This will update the saved settings for this section.')}</p>
               </div>
             </div>
 
             <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
-              <span className="font-semibold text-[#4b5548]">Section:</span> {confirmAction?.tab}
+              <span className="font-semibold text-[#4b5548]">{tl('Section:')}</span> {confirmAction?.tab}
             </div>
 
             <div className="mt-6 flex gap-3">
@@ -1127,14 +1256,14 @@ export const SettingsPage = () => {
                   setConfirmAction(null);
                 }}
               >
-                Cancel
+                {tl('Cancel')}
               </button>
               <button
                 type="button"
                 className="btn-pill-primary flex-1"
                 onClick={confirmSave}
               >
-                Save
+                {tl('Save')}
               </button>
             </div>
           </div>

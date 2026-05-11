@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import strayHelpLogo from '../assets/StrayHelp-Logo-2.png';
 import { login } from '../services/authService';
+import { useI18n } from '../hooks/useI18n';
 
 export const LoginPage = () => {
   const navigate = useNavigate();
+  const { t, tl } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const formatAdminName = (value) => {
-    if (!value) return 'Admin User';
+    if (!value) return tl('Admin User');
     const namePart = value.split('@')[0] || value;
     return namePart
       .replace(/[._-]+/g, ' ')
@@ -38,7 +40,7 @@ export const LoginPage = () => {
 
       navigate('/dashboard');
     } catch (loginError) {
-      setError(loginError.response?.data?.message || loginError.message || 'Login failed');
+      setError(loginError.response?.data?.message || loginError.message || tl('Login failed'));
     } finally {
       setLoading(false);
     }
@@ -54,15 +56,15 @@ export const LoginPage = () => {
               alt="StrayHelp logo"
               className="h-16 w-auto max-w-none object-contain sm:h-20 lg:h-24"
             />
-            <p className="text-sm uppercase tracking-[0.35em] text-[#77806d]">Admin Portal</p>
+            <p className="text-sm uppercase tracking-[0.35em] text-[#77806d]">{t('adminPortal', 'Admin Portal')}</p>
           </div>
 
           <h2 className="max-w-md text-4xl font-bold leading-tight tracking-tight text-[#77806d] sm:text-5xl">
-            Efficiently Manage Organizations, Donations, and Reports
+            {tl('Efficiently Manage Organizations, Donations, and Reports')}
           </h2>
 
           <p className="mt-5 max-w-lg text-base leading-7 text-[#77806d] sm:text-lg">
-            StrayHelp Admin Portal helps streamline organization management, track donations, monitor rescue reports, and support better care for stray animals.
+            {tl('StrayHelp Admin Portal helps streamline organization management, track donations, monitor rescue reports, and support better care for stray animals.')}
           </p>
         </div>
       </section>
@@ -76,10 +78,10 @@ export const LoginPage = () => {
             <div className="mb-8 flex items-center justify-between gap-4">
               <div>
                 <div className="inline-flex items-center rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.28em] text-white/85">
-                  Secure Admin Access
+                  {t('secureAdminAccess', 'Secure Admin Access')}
                 </div>
-                <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">Login</h1>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-white/85">Sign in to your StrayHelp admin account.</p>
+                <h1 className="mt-4 text-3xl font-bold tracking-tight text-white">{t('login', 'Login')}</h1>
+                <p className="mt-2 max-w-sm text-sm leading-6 text-white/85">{tl('Sign in to your StrayHelp admin account.')}</p>
               </div>
               <div className="hidden h-14 w-14 items-center justify-center rounded-2xl border border-white/15 bg-white/10 text-xl text-white shadow-[0_8px_20px_rgba(0,0,0,0.12)] sm:flex">
                 ⌘
@@ -93,24 +95,24 @@ export const LoginPage = () => {
                 </div>
               )}
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">Email Address</label>
+                <label className="mb-2 block text-sm font-medium text-white">{t('emailAddress', 'Email Address')}</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email address"
+                  placeholder={tl('Enter your email address')}
                   className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 text-sm text-[#333333] shadow-[0_1px_0_rgba(255,255,255,0.65)_inset] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/35"
                   required
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-white">Password</label>
+                <label className="mb-2 block text-sm font-medium text-white">{t('password', 'Password')}</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={tl('Enter your password')}
                   className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 text-sm text-[#333333] shadow-[0_1px_0_rgba(255,255,255,0.65)_inset] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/35"
                   required
                 />
@@ -119,7 +121,7 @@ export const LoginPage = () => {
                   className="mt-2 ml-auto block text-sm font-medium text-white/90 hover:opacity-80"
                   onClick={() => {}}
                 >
-                  Forgot password?
+                  {t('forgotPassword', 'Forgot password?')}
                 </button>
               </div>
 
@@ -128,7 +130,7 @@ export const LoginPage = () => {
                 disabled={loading}
                 className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-[#77806d] shadow-[0_10px_24px_rgba(0,0,0,0.12)] transition duration-200 hover:translate-y-[-1px] hover:shadow-[0_12px_28px_rgba(0,0,0,0.14)] disabled:cursor-not-allowed disabled:opacity-70"
               >
-                {loading ? 'Signing in…' : 'Sign In'}
+                {loading ? t('signingIn', 'Signing in…') : t('signIn', 'Sign In')}
               </button>
             </form>
 
@@ -140,7 +142,7 @@ export const LoginPage = () => {
                   <path d="M12 14.5v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
                 </svg>
               </span>
-              <span>Protected login for authorized staff only.</span>
+              <span>{tl('Protected login for authorized staff only.')}</span>
             </div>
           </div>
         </div>
