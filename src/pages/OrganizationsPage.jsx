@@ -7,15 +7,271 @@ import {
   rejectOrganization,
   updateOrganizationStatus
 } from '../services/adminService';
+import { fetchPendingKyc } from '../services/kycService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
+
+const toTitleLabel = (value) => String(value)
+  .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+  .replace(/[_-]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+  .replace(/^./, (match) => match.toUpperCase());
+
+const getUploadsOrigin = () => {
+  const explicitOrigin = String(import.meta.env.VITE_UPLOADS_ORIGIN || '').trim();
+  if (explicitOrigin) {
+    return explicitOrigin.replace(/\/+$/, '');
+  }
+
+  const apiBaseUrl = String(import.meta.env.VITE_API_BASE_URL || '').trim();
+  if (apiBaseUrl) {
+    try {
+      return new URL(apiBaseUrl).origin;
+    } catch {
+      // Fall through to local default when API base URL is invalid.
+    }
+  }
+
+  return `${window.location.protocol}//${window.location.hostname}:5000`;
+};
+
+const resolveDocumentUrl = (rawUrl) => {
+  if (!rawUrl) {
+    return '';
+  }
+
+  const cleaned = String(rawUrl).trim().replace(/^this\./, '');
+  const hasFileExtension = /\.[a-z0-9]{2,6}(\?|#|$)/i.test(cleaned);
+
+  if (/^https?:\/\//i.test(cleaned)) {
+    try {
+      const absoluteUrl = new URL(cleaned);
+      if (absoluteUrl.pathname.startsWith('/uploads/')) {
+        const baseOrigin = getUploadsOrigin();
+        return `${baseOrigin}${absoluteUrl.pathname}${absoluteUrl.search}${absoluteUrl.hash}`;
+      }
+    } catch {
+      // Ignore parse failures and return original value.
+    }
+    return cleaned;
+  }
+
+  if (/^\/\//.test(cleaned)) {
+    return `${window.location.protocol}${cleaned}`;
+  }
+
+  if (cleaned.startsWith('/uploads') || cleaned.startsWith('uploads/')) {
+    const baseOrigin = getUploadsOrigin();
+    const uploadsPath = cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
+    return `${baseOrigin}${uploadsPath}`;
+  }
+
+  if (!cleaned.includes('/') && hasFileExtension) {
+    const baseOrigin = getUploadsOrigin();
+    return `${baseOrigin}/uploads/${cleaned}`;
+  }
+
+  return cleaned;
+};
+
+const getDocumentUrl = (document) => {
+  if (typeof document === 'string') {
+    return resolveDocumentUrl(document);
+  }
+
+  return resolveDocumentUrl(document?.url || document?.file_url || document?.path || document?.link || document?.src || '');
+};
+
+const getDocumentName = (document, index, fallbackLabel = '') => {
+  if (typeof document === 'string') {
+    const cleanedUrl = getDocumentUrl(document);
+    const fileName = decodeURIComponent(cleanedUrl.split('/').pop() || fallbackLabel || `Document ${index + 1}`);
+    const originalNameMatch = fileName.match(/-\d{10,}-(.+)$/);
+    return originalNameMatch ? originalNameMatch[1] : fileName;
+  }
+
+  const providedName = document?.name || document?.title || document?.label || fallbackLabel;
+
+  if (providedName) {
+    const originalNameMatch = String(providedName).match(/-\d{10,}-(.+)$/);
+    return originalNameMatch ? originalNameMatch[1] : providedName;
+  }
+
+  const fallbackUrl = getDocumentUrl(document);
+  if (fallbackUrl) {
+    const fallbackFileName = decodeURIComponent(fallbackUrl.split('/').pop() || fallbackLabel || `Document ${index + 1}`);
+    const originalNameMatch = fallbackFileName.match(/-\d{10,}-(.+)$/);
+    return originalNameMatch ? originalNameMatch[1] : fallbackFileName;
+  }
+
+  return fallbackLabel || `Document ${index + 1}`;
+};
+
+const getDocumentType = (document, documentName) => {
+  if (typeof document === 'object' && document?.type) {
+    return document.type;
+  }
+
+  const sourceName = documentName || getDocumentUrl(document);
+  const extension = sourceName.split('.').pop()?.toLowerCase();
+
+  if (extension === 'jpg' || extension === 'jpeg' || extension === 'png' || extension === 'gif' || extension === 'webp') {
+    return 'Image';
+  }
+
+  if (extension === 'pdf') {
+    return 'PDF';
+  }
+
+  return 'File';
+};
+
+const normalizeDocument = (document, index, fallbackLabel = '') => {
+  const url = getDocumentUrl(document);
+  const name = getDocumentName(document, index, fallbackLabel);
+
+  return {
+    name,
+    type: getDocumentType(document, name),
+    size: typeof document === 'object' ? (document?.size || document?.fileSize || '') : '',
+    url
+  };
+};
+
+const isImageDocument = (documentUrl) => /\.(png|jpe?g|gif|webp|bmp|svg)(\?|#|$)/i.test(documentUrl || '');
+
+const isPdfDocument = (documentUrl) => /\.pdf(\?|#|$)/i.test(documentUrl || '');
+
+const isDocumentLikeValue = (value) => {
+  if (typeof value === 'string') {
+    const normalized = value.trim();
+    return /(https?:\/\/|^\/uploads|^uploads\/|^this\.https?:\/\/|\.[a-z0-9]{2,6}(\?|#|$))/i.test(normalized);
+  }
+
+  if (value && typeof value === 'object') {
+    return Boolean(value.url || value.file_url || value.path || value.link || value.src);
+  }
+
+  return false;
+};
+
+const parseMaybeJson = (value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
+    return value;
+  }
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const collectDocumentEntries = (source, prefix = '') => {
+  const parsed = parseMaybeJson(source);
+
+  if (Array.isArray(parsed)) {
+    return parsed.flatMap((item, index) => collectDocumentEntries(item, prefix || `Document ${index + 1}`));
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    const nestedEntries = Object.entries(parsed).flatMap(([key, value]) => {
+      const nextPrefix = prefix ? `${prefix} ${toTitleLabel(key)}` : toTitleLabel(key);
+      return collectDocumentEntries(value, nextPrefix);
+    });
+
+    // If object has no extractable nested document fields, treat the object itself as a document node.
+    if (nestedEntries.length === 0 && isDocumentLikeValue(parsed)) {
+      return [{ document: parsed, fallbackLabel: prefix }];
+    }
+
+    return nestedEntries;
+  }
+
+  if (isDocumentLikeValue(parsed)) {
+    return [{ document: parsed, fallbackLabel: prefix }];
+  }
+
+  return [];
+};
+
+const toDocumentList = (documents) => {
+  return collectDocumentEntries(documents)
+    .map(({ document, fallbackLabel }, index) => ({ document, fallbackLabel, index }));
+};
+
+const getOrganizationDocumentSources = (organization) => {
+  const sources = [
+    organization?.documents,
+    organization?.kycDocuments,
+    organization?.kyc_documents,
+    organization?.submittedDocuments,
+    organization?.submitted_documents,
+    organization?.kyc,
+    organization?.kycData,
+    organization?.kyc_data
+  ].filter(Boolean);
+
+  const rootDocumentLikeEntries = Object.entries(organization || {}).filter(([key, value]) => {
+    if (!value) {
+      return false;
+    }
+
+    const matchesDocumentKey = /(document|permit|authorization|letter|valid.?id|proof|legitimacy|certificate|registration|kyc)/i.test(key);
+    return matchesDocumentKey && (isDocumentLikeValue(value) || (typeof value === 'string' && value.trim().startsWith('{')) || (typeof value === 'object'));
+  });
+
+  if (rootDocumentLikeEntries.length > 0) {
+    sources.push(Object.fromEntries(rootDocumentLikeEntries));
+  }
+
+  return sources;
+};
+
+const toComparableId = (value) => {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  return String(value).trim();
+};
+
+const findMatchingKycRecord = (organization, kycRecords) => {
+  const organizationIds = [
+    organization?.id,
+    organization?.organizationId,
+    organization?.organization_id,
+    organization?.orgId,
+    organization?.org_id
+  ].map(toComparableId).filter(Boolean);
+
+  return (kycRecords || []).find((record) => {
+    const recordIds = [
+      record?.organizationId,
+      record?.organization_id,
+      record?.orgId,
+      record?.org_id,
+      record?.organization?.id,
+      record?.org?.id,
+      record?.organization
+    ].map(toComparableId).filter(Boolean);
+
+    return recordIds.some((recordId) => organizationIds.includes(recordId));
+  }) || null;
+};
 
 export const OrganizationsPage = () => {
   const { settings } = useSettingsContext();
   const { t, tl } = useI18n();
   const [selectedApplication, setSelectedApplication] = useState(null);
-  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [previewDocument, setPreviewDocument] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [suspendConfirm, setSuspendConfirm] = useState(null);
   const [actionToast, setActionToast] = useState('');
@@ -27,13 +283,26 @@ export const OrganizationsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchOrganizations();
+      const [data, pendingKycRecords] = await Promise.all([
+        fetchOrganizations(),
+        fetchPendingKyc().catch(() => [])
+      ]);
+
       setApplications(data.map((o) => {
         const normalizedStatus = o.status === 'Verified'
           ? 'Active'
           : o.status === 'Rejected'
             ? 'Suspended'
             : 'Pending';
+
+        const relatedKycRecord = findMatchingKycRecord(o, pendingKycRecords);
+        const normalizedDocuments = [o, relatedKycRecord]
+          .filter(Boolean)
+          .flatMap((source) => getOrganizationDocumentSources(source))
+          .flatMap((source) => toDocumentList(source))
+          .map(({ document, fallbackLabel, index }) => normalizeDocument(document, index, fallbackLabel))
+          .filter((document) => document.url)
+          .filter((document, index, all) => all.findIndex((candidate) => candidate.url === document.url) === index);
 
         return {
           id: o.id,
@@ -45,7 +314,7 @@ export const OrganizationsPage = () => {
           description: '',
           status: normalizedStatus,
           applied: formatDate(o.created_at, settings),
-          documents: []
+          documents: normalizedDocuments
         };
       }));
     } catch (err) {
@@ -275,7 +544,10 @@ export const OrganizationsPage = () => {
       </div>
 
       {selectedApplication && (
-        <div className="modal-overlay" onClick={() => setSelectedApplication(null)}>
+        <div className="modal-overlay" onClick={() => {
+          setSelectedApplication(null);
+          setPreviewDocument(null);
+        }}>
           <div className="modal-card max-w-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -316,15 +588,22 @@ export const OrganizationsPage = () => {
                   {selectedApplication.documents.length === 0 ? (
                     <p className="text-sm text-[#9aa294]">{tl('No documents submitted.')}</p>
                   ) : selectedApplication.documents.map((document) => (
-                    <div key={document.name} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6eadf] bg-white px-3 py-3 text-sm text-[#5a6457]">
+                    <div key={`${document.name}-${document.url}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6eadf] bg-white px-3 py-3 text-sm text-[#5a6457]">
                       <div>
                         <p className="font-semibold text-[#4b5548]">{document.name}</p>
-                        <p className="text-xs text-[#9aa294]">{document.type} · {document.size}</p>
+                        <p className="text-xs text-[#9aa294]">{document.type}{document.size ? ` · ${document.size}` : ''}</p>
                       </div>
-                      <button type="button" className="btn-pill-outline-sm" onClick={() => setSelectedDocument(document)}>{tl('View')}</button>
+                      <button
+                        type="button"
+                        className="btn-pill-outline-sm"
+                        onClick={() => setPreviewDocument(document)}
+                      >
+                        {tl('View')}
+                      </button>
                     </div>
                   ))}
                 </div>
+
 
                 <div className="mt-5 flex items-center gap-3">
                   <button type="button" className="btn-pill-primary flex-1" onClick={() => handleApprove(selectedApplication)}>{tl('Accept')}</button>
@@ -334,7 +613,72 @@ export const OrganizationsPage = () => {
             </div>
 
             <div className="mt-6 flex items-center justify-end">
-              <button type="button" className="btn-outline" onClick={() => setSelectedApplication(null)}>{tl('Close')}</button>
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => {
+                  setSelectedApplication(null);
+                  setPreviewDocument(null);
+                }}
+              >
+                {tl('Close')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewDocument && (
+        <div className="modal-overlay" onClick={() => setPreviewDocument(null)}>
+          <div className="modal-card max-w-4xl" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{previewDocument.name}</h3>
+                <p className="text-xs text-[#9aa294]">{previewDocument.type}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href={previewDocument.url} target="_blank" rel="noreferrer" className="btn-pill-outline-sm">{tl('Open in new tab')}</a>
+                <button type="button" className="btn-outline" onClick={() => setPreviewDocument(null)}>{tl('Close')}</button>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#e6eadf] bg-[#fafaf8] p-3">
+              {isImageDocument(previewDocument.url) ? (
+                <div className="bg-white rounded-lg overflow-hidden">
+                  <img
+                    src={previewDocument.url}
+                    alt={previewDocument.name}
+                    crossOrigin="anonymous"
+                    className="max-h-[70vh] w-full rounded-lg object-contain bg-white"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      if (e.target.parentElement) {
+                        e.target.parentElement.innerHTML = `<div class="flex flex-col items-center justify-center min-h-[220px] bg-white px-6 py-10 text-center"><p class="text-sm font-semibold text-[#4b5548]">Failed to load image</p><p class="mt-2 text-xs text-[#9aa294] break-all">${previewDocument.url}</p><a href="${previewDocument.url}" target="_blank" rel="noreferrer" class="mt-3">Open in browser</a></div>`;
+                      }
+                    }}
+                  />
+                </div>
+              ) : isPdfDocument(previewDocument.url) ? (
+                <div>
+                  <iframe
+                    title={previewDocument.name}
+                    src={previewDocument.url}
+                    className="h-[70vh] w-full rounded-lg border border-[#e6eadf] bg-white"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      if (e.target.parentElement) {
+                        e.target.parentElement.innerHTML = `<div class="flex flex-col items-center justify-center min-h-[220px] bg-white px-6 py-10 text-center"><p class="text-sm font-semibold text-[#4b5548]">Failed to load PDF</p><p class="mt-2 text-xs text-[#9aa294] break-all">${previewDocument.url}</p><a href="${previewDocument.url}" target="_blank" rel="noreferrer" class="mt-3">Open in browser</a></div>`;
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-lg border border-dashed border-[#d7decf] bg-white px-6 text-center">
+                  <p className="text-sm font-semibold text-[#4b5548]">{tl('Preview is not available for this file type.')}</p>
+                  <p className="mt-2 text-xs text-[#9aa294] break-all">URL: {previewDocument.url}</p>
+                  <a href={previewDocument.url} target="_blank" rel="noreferrer" className="mt-3 btn-pill-outline-sm">{tl('Open file')}</a>
+                </div>
+              )}
             </div>
           </div>
         </div>
