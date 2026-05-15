@@ -8,8 +8,9 @@ export async function fetchReports() {
 
 // GET /api/reports/pending (admin only)
 export async function fetchPendingReports() {
-  const response = await api.get('/reports/pending');
-  return response.data.reports;
+  const response = await api.get('/reports');
+  const reports = response.data.reports || [];
+  return reports.filter((report) => String(report.status || '').toLowerCase() === 'pending');
 }
 
 // POST /api/reports (with image upload)

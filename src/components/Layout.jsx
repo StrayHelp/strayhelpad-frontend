@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import strayHelpLogo from '../assets/StrayHelp-Logo-1.png';
 import { useSettingsContext } from '../context/SettingsContext';
 import { useI18n } from '../hooks/useI18n';
+import api from '../services/api';
 
 export const Layout = ({ children, title }) => {
   const navigate = useNavigate();
@@ -19,7 +20,21 @@ export const Layout = ({ children, title }) => {
     : 'admin@strayhelp.com';
   const profilePicture = settings?.profile?.profilePicture || null;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    const token = typeof window !== 'undefined' ? window.localStorage.getItem('authToken') : null;
+
+    if (token) {
+      try {
+        await api.post('/auth/logout');
+      } catch {
+        try {
+          await api.post('/auth-otp/logout');
+        } catch {
+          // Ignore logout API failures and continue local sign-out.
+        }
+      }
+    }
+
     window.localStorage.removeItem('adminName');
     window.localStorage.removeItem('adminEmail');
     window.localStorage.removeItem('authToken');

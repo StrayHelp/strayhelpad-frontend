@@ -12,6 +12,12 @@ export async function fetchDashboardStats() {
   };
 }
 
+// GET /api/admin/dashboard/monitoring
+export async function fetchDashboardMonitoring() {
+  const response = await api.get('/admin/dashboard/monitoring');
+  return response.data.monitoring;
+}
+
 // GET /api/admin/users
 export async function fetchUsers() {
   const response = await api.get('/admin/users');

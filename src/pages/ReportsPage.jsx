@@ -28,7 +28,7 @@ export const ReportsPage = () => {
         description: r.description,
         category: tl('Rescue'),
         date: formatDate(r.created_at, settings),
-        status: r.status
+        status: 'Active'
       })));
     } catch (err) {
       setError(err.response?.data?.message || err.message || tl('Unable to load reports'));
@@ -44,6 +44,12 @@ export const ReportsPage = () => {
   const showActionToast = (message) => {
     setActionToast(message);
     setTimeout(() => setActionToast(''), 3000);
+  };
+
+  const setReportStatusById = (reportId, status) => {
+    setReports((prev) => prev.map((report) => (
+      report.id === reportId ? { ...report, status } : report
+    )));
   };
 
   return (
@@ -246,7 +252,9 @@ export const ReportsPage = () => {
                 type="button"
                 className={selectedReport.status === 'Flagged' ? 'btn-outline mr-3' : 'btn-pill-danger mr-3'}
                 onClick={() => {
-                  const action = selectedReport.status === 'Flagged' ? 'unflagged' : 'flagged';
+                  const nextStatus = selectedReport.status === 'Flagged' ? 'Active' : 'Flagged';
+                  const action = nextStatus === 'Flagged' ? 'flagged' : 'unflagged';
+                  setReportStatusById(selectedReport.id, nextStatus);
                   showActionToast(`✓ ${tl('Report')} ${tl(action)}`);
                   setSelectedReport(null);
                 }}

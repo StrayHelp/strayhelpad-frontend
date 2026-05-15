@@ -1,15 +1,40 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { fetchDashboardStats, fetchDonations, fetchUsers } from '../services/adminService';
+import { fetchDashboardStats, fetchDashboardMonitoring, fetchDonations, fetchUsers } from '../services/adminService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
+
+function formatRelativeTime(timestamp) {
+  if (!timestamp) {
+    return '—';
+  }
+
+  const diffMs = Date.now() - new Date(timestamp).getTime();
+  const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0);
+
+  if (diffMinutes < 1) {
+    return 'just now';
+  }
+  if (diffMinutes < 60) {
+    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) {
+    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+}
 
 export const DashboardPage = () => {
   const { settings } = useSettingsContext();
   const { t, tl } = useI18n();
   const [selectedUser, setSelectedUser] = useState(null);
   const [stats, setStats] = useState(null);
+  const [monitoring, setMonitoring] = useState(null);
   const [recentDonations, setRecentDonations] = useState([]);
   const [recentUsers, setRecentUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +44,15 @@ export const DashboardPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const [statsData, donationsData, usersData] = await Promise.all([
+      const [statsData, donationsData, usersData, monitoringData] = await Promise.all([
         fetchDashboardStats(),
         fetchDonations(),
-        fetchUsers()
+        fetchUsers(),
+        fetchDashboardMonitoring().catch(() => null)
       ]);
 
       setStats(statsData);
+      setMonitoring(monitoringData);
       setRecentDonations(donationsData.slice(0, 4).map(d => ({
         donor: d.donor_name,
         org: d.organization_name || '—',
@@ -194,6 +221,46 @@ export const DashboardPage = () => {
               ))}
             </div>
           </div>
+        </div>
+
+        <div className="card-lg">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-[#4b5548]">{tl('Logging & Monitoring')}</h2>
+            <button className="btn-pill-muted">{tl('View logs')}</button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1.8fr]">
+            <div className="rounded-2xl border border-[#ebefe4] bg-[#f8faf5] p-4">
+              <p className="text-xs font-semibold tracking-wide text-[#8f9789]">{monitoring?.auditSummary?.title || 'SECURE AUDIT LOGGING'}</p>
+              <p className="mt-2 text-sm text-[#6f796b]">
+                {monitoring?.auditSummary?.description || 'Transaction events, admin actions, and system changes are captured with tamper-evident hashing.'}
+              </p>
+
+              <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-[#dde5d3] bg-white px-3 py-1 font-semibold text-[#6f796b]">
+                  {`${tl('Retention')}: ${monitoring?.auditSummary?.retentionDays || 365} ${tl('days')}`}
+                </span>
+                <span className="rounded-full border border-[#dde5d3] bg-white px-3 py-1 font-semibold text-[#6f796b]">
+                  {monitoring?.auditSummary?.encryption || 'AES-256 at rest'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {(monitoring?.events || []).map((event) => (
+                <div key={event.id} className="flex items-start justify-between rounded-xl border border-[#edf1e8] bg-white px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#4b5548]">{event.title}</p>
+                    <p className="text-xs text-[#97a08f]">{`${event.source} - ${formatRelativeTime(event.occurredAt)}`}</p>
+                  </div>
+                  <span className="rounded-full border border-[#e2e7da] bg-[#f7f9f3] px-3 py-1 text-xs font-semibold text-[#6f796b]">
+                    {event.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
 
