@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import strayHelpLogo from '../assets/StrayHelp-Logo-2.png';
-import { mockData } from '../services/mockData';
+import api from '../services/api';
 import { useI18n } from '../hooks/useI18n';
 
 export const LoginPage = () => {
@@ -12,7 +12,6 @@ export const LoginPage = () => {
   const [role, setRole] = useState('super-admin');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [showTestCredentials, setShowTestCredentials] = useState(false);
 
   const formatAdminName = (value) => {
     if (!value) return tl('Admin User');
@@ -33,47 +32,45 @@ export const LoginPage = () => {
 
     try {
       const normalizedEmail = email.trim();
-      
-      // ============ MOCK LOGIN - NO API CALL ============
-      // Check if credentials match any test account
-      const testUser = mockData.testCredentials.find(
-        cred => cred.email === normalizedEmail && cred.password === password
-      );
 
-      if (!testUser) {
-        setError('Invalid email or password. Try: itadmin@strayhelp.com / password123');
-        setLoading(false);
+      const response = await api.post('/auth/login', {
+        email: normalizedEmail,
+        password
+      });
+
+      const user = response.data?.user || {};
+      const token = response.data?.token;
+      const backendRole = String(user.role || '').toLowerCase();
+      const normalizedRole =
+        backendRole === 'it_admin'
+          ? 'it-admin'
+          : backendRole === 'super_admin' || backendRole === 'admin'
+            ? 'super-admin'
+            : '';
+
+      if (!token || !normalizedRole) {
+        setError(tl('This account cannot access the admin portal.'));
         return;
       }
 
-      // Verify selected role matches
-      if (testUser.role !== role) {
-        setError(`This account is a ${testUser.role === 'it-admin' ? 'IT Admin' : 'Super Admin'}. Select the correct role.`);
-        setLoading(false);
+      if (normalizedRole !== role) {
+        const readableRole = normalizedRole === 'it-admin' ? 'IT Admin' : 'Super Admin';
+        setError(`This account is ${readableRole}. Select the correct role.`);
         return;
       }
 
-      // Set local storage with mock user data
-      const mockToken = 'mock_token_' + Math.random().toString(36).substr(2, 9);
-      window.localStorage.setItem('authToken', mockToken);
-      window.localStorage.setItem('adminName', testUser.name);
-      window.localStorage.setItem('adminEmail', testUser.email);
-      window.localStorage.setItem('adminRole', testUser.role);
+      window.localStorage.setItem('authToken', token);
+      window.localStorage.setItem('adminName', user.name || formatAdminName(user.email || normalizedEmail));
+      window.localStorage.setItem('adminEmail', user.email || normalizedEmail);
+      window.localStorage.setItem('adminRole', normalizedRole);
 
-      // Redirect based on role
-      const redirectPath = testUser.role === 'it-admin' ? '/it-admin/dashboard' : '/dashboard';
+      const redirectPath = normalizedRole === 'it-admin' ? '/it-admin/dashboard' : '/dashboard';
       navigate(redirectPath);
     } catch (loginError) {
       setError(loginError.response?.data?.message || loginError.message || tl('Login failed'));
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillTestCredentials = (credential) => {
-    setEmail(credential.email);
-    setPassword(credential.password);
-    setRole(credential.role);
   };
 
   return (
@@ -203,36 +200,8 @@ export const LoginPage = () => {
               <span>{tl('Protected login for authorized staff only.')}</span>
             </div>
 
-            {/* MOCK DATA - TEST CREDENTIALS */}
-            <div className="mt-6">
-              <button
-                type="button"
-                onClick={() => setShowTestCredentials(!showTestCredentials)}
-                className="w-full text-xs font-semibold text-white/60 hover:text-white/80 transition"
-              >
-                {showTestCredentials ? '▼ Hide' : '▶ Show'} Test Credentials
-              </button>
-              
-              {showTestCredentials && (
-                <div className="mt-4 space-y-2 rounded-xl border border-white/15 bg-white/10 p-3">
-                  <p className="text-xs font-semibold text-white/70 uppercase tracking-wide">Mock Accounts (for testing)</p>
-                  {mockData.testCredentials.map((cred) => (
-                    <button
-                      key={cred.email}
-                      type="button"
-                      onClick={() => fillTestCredentials(cred)}
-                      className="block w-full rounded-lg bg-white/20 px-3 py-2 text-left text-xs text-white hover:bg-white/30 transition"
-                    >
-                      <div className="font-medium">{cred.name} ({cred.role === 'it-admin' ? 'IT Admin' : 'Super Admin'})</div>
-                      <div className="text-white/70">{cred.email}</div>
-                      <div className="text-white/50">Pass: {cred.password}</div>
-                    </button>
-                  ))}
-                  <p className="text-xs text-white/50 pt-2 border-t border-white/15">
-                    Click any account to auto-fill credentials
-                  </p>
-                </div>
-              )}
+            <div className="mt-6 text-xs text-white/70">
+              {tl('Use your existing backend-admin account credentials to sign in.')}
             </div>
           </div>
         </div>

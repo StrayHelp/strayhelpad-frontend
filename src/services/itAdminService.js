@@ -1,172 +1,142 @@
-// ============ MOCK DATA ONLY - NO API CALLS ============
-import {
-  mockData,
-  findAccountById,
-  updateAccountInMock,
-  generateTempPassword,
-  addAuditLog,
-  getAccountStats
-} from './mockData';
+import api from './api';
 
-// Simulates API delay for realistic feel
-const simulateDelay = (ms = 300) => new Promise(resolve => setTimeout(resolve, ms));
+function mapRoleLabel(role) {
+  switch (role) {
+    case 'org':
+      return 'Organization';
+    case 'donor':
+      return 'Donor';
+    case 'admin':
+    case 'super_admin':
+      return 'Super Admin';
+    case 'it_admin':
+      return 'IT Admin';
+    default:
+      return role ? role.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()) : 'User';
+  }
+}
 
-// GET /api/it-admin/accounts
+function mapAccountType(role) {
+  return role === 'org' ? 'organization' : 'user';
+}
+
+function formatDate(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+}
+
+function formatDateTime(value) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+}
+
+function mapAccount(account) {
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email,
+    role: mapRoleLabel(account.role),
+    rawRole: account.role,
+    accountType: mapAccountType(account.role),
+    status: account.account_status,
+    joined: formatDate(account.created_at),
+    createdAt: formatDateTime(account.created_at),
+    createdAtRaw: account.created_at,
+    lastLogin: 'Never',
+    lastLoginRaw: null,
+    phone: account.contact_number || '—',
+    location: 'Philippines'
+  };
+}
+
+function mapAuditLog(log) {
+  return {
+    ...log,
+    timestamp: new Date(log.timestamp)
+  };
+}
+
 export async function fetchAccounts(page = 1, limit = 10, search = '', filters = {}) {
-  await simulateDelay();
-  
-  let filtered = [...mockData.accounts];
-  
-  // Apply search filter
-  if (search) {
-    const searchLower = search.toLowerCase();
-    filtered = filtered.filter(acc =>
-      acc.name.toLowerCase().includes(searchLower) ||
-      acc.email.toLowerCase().includes(searchLower)
-    );
-  }
-  
-  // Apply status filter
-  if (filters.status) {
-    filtered = filtered.filter(acc => acc.status === filters.status);
-  }
-  
-  // Apply role filter
-  if (filters.role) {
-    filtered = filtered.filter(acc => acc.role === filters.role);
-  }
-  
-  // Apply account type filter
-  if (filters.accountType) {
-    filtered = filtered.filter(acc => acc.accountType === filters.accountType);
-  }
-  
-  // Pagination
-  const total = filtered.length;
-  const startIdx = (page - 1) * limit;
-  const accounts = filtered.slice(startIdx, startIdx + limit);
-  
+  const params = {
+    page,
+    limit
+  };
+
+  if (search) params.search = search;
+  if (filters.status) params.status = filters.status;
+  if (filters.role) params.role = filters.role;
+  if (filters.accountType) params.accountType = filters.accountType;
+
+  const response = await api.get('/admin/accounts', { params });
+  const accounts = (response.data.accounts || []).map(mapAccount);
+  const pagination = response.data.pagination || {};
+
   return {
     accounts,
-    total,
-    page,
-    limit,
-    pages: Math.ceil(total / limit)
+    total: pagination.total || 0,
+    page: pagination.page || page,
+    limit: pagination.limit || limit,
+    pages: Math.ceil((pagination.total || 0) / (pagination.limit || limit || 1))
   };
 }
 
-// GET /api/it-admin/accounts/:id
 export async function fetchAccountDetails(accountId) {
-  await simulateDelay();
-  const account = findAccountById(accountId);
-  
-  if (!account) {
-    throw new Error('Account not found');
-  }
-  
-  return account;
+  const response = await api.get(`/admin/accounts/${accountId}`);
+  return mapAccount(response.data.account || {});
 }
 
-// PUT /api/it-admin/accounts/:id/email
 export async function updateAccountEmail(accountId, newEmail) {
-  await simulateDelay();
-  
-  const account = findAccountById(accountId);
-  if (!account) {
-    throw new Error('Account not found');
-  }
-  
-  const oldEmail = account.email;
-  updateAccountInMock(accountId, { email: newEmail });
-  
-  // Add audit log
-  addAuditLog(
-    'Email Updated',
-    account.name,
-    window.localStorage.getItem('adminEmail') || 'admin@strayhelp.com',
-    `Email changed from ${oldEmail} to ${newEmail}`
-  );
-  
-  return account;
+  const response = await api.patch(`/admin/accounts/${accountId}/email`, { email: newEmail });
+  return mapAccount(response.data.account || {});
 }
 
-// POST /api/it-admin/accounts/:id/reset-password
 export async function resetAccountPassword(accountId) {
-  await simulateDelay();
-  
-  const account = findAccountById(accountId);
-  if (!account) {
-    throw new Error('Account not found');
-  }
-  
-  const tempPassword = generateTempPassword();
-  
-  // Add audit log
-  addAuditLog(
-    'Password Reset',
-    account.name,
-    window.localStorage.getItem('adminEmail') || 'admin@strayhelp.com',
-    'Temporary password generated'
-  );
-  
+  const response = await api.post(`/admin/accounts/${accountId}/reset-password`);
   return {
     success: true,
-    tempPassword,
-    message: 'Password reset successful. A temporary password has been generated.'
+    tempPassword: response.data.temporaryPassword,
+    message: response.data.message
   };
 }
 
-// PUT /api/it-admin/accounts/:id/status
 export async function updateAccountStatus(accountId, status) {
-  await simulateDelay();
-  
-  const account = findAccountById(accountId);
-  if (!account) {
-    throw new Error('Account not found');
-  }
-  
-  const oldStatus = account.status;
-  updateAccountInMock(accountId, { status });
-  
-  // Add audit log
-  addAuditLog(
-    status === 'Active' ? 'Account Activated' : 'Account Suspended',
-    account.name,
-    window.localStorage.getItem('adminEmail') || 'admin@strayhelp.com',
-    `Account ${status === 'Active' ? 'activated' : 'suspended'}`
-  );
-  
-  return account;
+  const response = await api.patch(`/admin/accounts/${accountId}/status`, { status });
+  return mapAccount(response.data.account || {});
 }
 
-// GET /api/it-admin/accounts/:id/audit
-export async function fetchAccountAudit(accountId, page = 1, limit = 20) {
-  await simulateDelay();
-  
-  const account = findAccountById(accountId);
-  if (!account) {
-    throw new Error('Account not found');
-  }
-  
-  // Filter logs for this account
-  let filtered = mockData.auditLogs.filter(log => log.account === account.name);
-  
-  // Pagination
-  const total = filtered.length;
-  const startIdx = (page - 1) * limit;
-  const logs = filtered.slice(startIdx, startIdx + limit);
-  
+export async function fetchITAdminAuditLogs(page = 1, limit = 100, search = '', action = '') {
+  const params = { page, limit };
+  if (search) params.search = search;
+  if (action) params.action = action;
+
+  const response = await api.get('/admin/audit-logs', { params });
+  const logs = (response.data.logs || []).map(mapAuditLog);
+  const pagination = response.data.pagination || {};
+
   return {
     logs,
-    total,
-    page,
-    limit,
-    pages: Math.ceil(total / limit)
+    total: pagination.total || 0,
+    page: pagination.page || page,
+    limit: pagination.limit || limit,
+    pages: Math.ceil((pagination.total || 0) / (pagination.limit || limit || 1))
   };
 }
 
-// GET /api/it-admin/dashboard
 export async function fetchITAdminDashboard() {
-  await simulateDelay();
-  return getAccountStats();
+  const response = await api.get('/admin/accounts/stats');
+  return response.data.stats || {};
 }

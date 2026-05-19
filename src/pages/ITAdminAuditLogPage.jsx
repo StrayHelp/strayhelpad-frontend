@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ITAdminLayout } from '../components/ITAdminLayout';
-import { mockData } from '../services/mockData';
+import { fetchITAdminAuditLogs } from '../services/itAdminService';
 import { useI18n } from '../hooks/useI18n';
 
 export const ITAdminAuditLogPage = () => {
@@ -8,14 +8,26 @@ export const ITAdminAuditLogPage = () => {
   const [auditLogs, setAuditLogs] = useState([]);
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('');
 
   useEffect(() => {
-    // Load mock audit logs
-    setAuditLogs(mockData.auditLogs);
-    setLoading(false);
+    loadAuditLogs();
   }, []);
+
+  const loadAuditLogs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchITAdminAuditLogs(1, 200);
+      setAuditLogs(data.logs || []);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || tl('Unable to load audit logs'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     // Apply filters
@@ -70,6 +82,12 @@ export const ITAdminAuditLogPage = () => {
           <p className="mt-1 text-sm text-[#7a8476]">{tl('Track all administrative actions and account changes')}</p>
         </div>
 
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="mb-6 flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-[250px]">
@@ -113,7 +131,7 @@ export const ITAdminAuditLogPage = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredLogs.map((log, idx) => (
+            {filteredLogs.map((log) => (
               <div key={log.id} className="flex gap-4 border-l-2 border-[#e2e6dc] pl-4 pb-4">
                 <div className="mt-1 flex-shrink-0">
                   <div className={`inline-flex rounded-full p-2 ${getActionColor(log.action)}`}>

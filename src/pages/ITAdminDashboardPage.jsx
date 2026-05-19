@@ -153,7 +153,7 @@ export const ITAdminDashboardPage = () => {
             {tl('Manage Accounts')}
           </a>
           <a
-            href="/it-admin/accounts"
+            href="/it-admin/audit"
             className="rounded-lg border border-[#e2e6dc] bg-white px-4 py-3 text-center text-sm font-semibold text-[#77806d] hover:bg-[#f5f7f3]"
           >
             {tl('View Audit Log')}
