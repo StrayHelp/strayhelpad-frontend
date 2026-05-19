@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import strayHelpLogo from '../assets/StrayHelp-Logo-2.png';
-import { login } from '../services/authService';
+import { mockData } from '../services/mockData';
 import { useI18n } from '../hooks/useI18n';
 
 export const LoginPage = () => {
@@ -9,8 +9,10 @@ export const LoginPage = () => {
   const { t, tl } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('super-admin');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showTestCredentials, setShowTestCredentials] = useState(false);
 
   const formatAdminName = (value) => {
     if (!value) return tl('Admin User');
@@ -31,19 +33,47 @@ export const LoginPage = () => {
 
     try {
       const normalizedEmail = email.trim();
-      const response = await login(normalizedEmail, password);
-      const adminName = response.user?.name || formatAdminName(normalizedEmail);
+      
+      // ============ MOCK LOGIN - NO API CALL ============
+      // Check if credentials match any test account
+      const testUser = mockData.testCredentials.find(
+        cred => cred.email === normalizedEmail && cred.password === password
+      );
 
-      window.localStorage.setItem('authToken', response.token);
-      window.localStorage.setItem('adminName', adminName);
-      window.localStorage.setItem('adminEmail', response.user?.email || normalizedEmail);
+      if (!testUser) {
+        setError('Invalid email or password. Try: itadmin@strayhelp.com / password123');
+        setLoading(false);
+        return;
+      }
 
-      navigate('/dashboard');
+      // Verify selected role matches
+      if (testUser.role !== role) {
+        setError(`This account is a ${testUser.role === 'it-admin' ? 'IT Admin' : 'Super Admin'}. Select the correct role.`);
+        setLoading(false);
+        return;
+      }
+
+      // Set local storage with mock user data
+      const mockToken = 'mock_token_' + Math.random().toString(36).substr(2, 9);
+      window.localStorage.setItem('authToken', mockToken);
+      window.localStorage.setItem('adminName', testUser.name);
+      window.localStorage.setItem('adminEmail', testUser.email);
+      window.localStorage.setItem('adminRole', testUser.role);
+
+      // Redirect based on role
+      const redirectPath = testUser.role === 'it-admin' ? '/it-admin/dashboard' : '/dashboard';
+      navigate(redirectPath);
     } catch (loginError) {
       setError(loginError.response?.data?.message || loginError.message || tl('Login failed'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const fillTestCredentials = (credential) => {
+    setEmail(credential.email);
+    setPassword(credential.password);
+    setRole(credential.role);
   };
 
   return (
@@ -94,6 +124,35 @@ export const LoginPage = () => {
                   {error}
                 </div>
               )}
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-white">{t('role', 'Admin Role')}</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRole('super-admin')}
+                    className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
+                      role === 'super-admin'
+                        ? 'border-white bg-white/20 text-white'
+                        : 'border-white/20 bg-white/10 text-white/70 hover:bg-white/15'
+                    }`}
+                  >
+                    {tl('Super Admin')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRole('it-admin')}
+                    className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition ${
+                      role === 'it-admin'
+                        ? 'border-white bg-white/20 text-white'
+                        : 'border-white/20 bg-white/10 text-white/70 hover:bg-white/15'
+                    }`}
+                  >
+                    {tl('IT Admin')}
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-white">{t('emailAddress', 'Email Address')}</label>
                 <input
@@ -137,12 +196,43 @@ export const LoginPage = () => {
             <div className="mt-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs text-white/80">
               <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-white/10 text-black">
                 <svg viewBox="0 0 24 24" className="h-4 w-4 text-white" fill="none" aria-hidden="true">
-                  <path d="M8 11V8a4 4 0 1 1 8 0v3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                  <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.8" />
-                  <path d="M12 14.5v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                  <rect x="3" y="11" width="18" height="10" rx="2" stroke="currentColor" strokeWidth="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 </svg>
               </span>
               <span>{tl('Protected login for authorized staff only.')}</span>
+            </div>
+
+            {/* MOCK DATA - TEST CREDENTIALS */}
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowTestCredentials(!showTestCredentials)}
+                className="w-full text-xs font-semibold text-white/60 hover:text-white/80 transition"
+              >
+                {showTestCredentials ? '▼ Hide' : '▶ Show'} Test Credentials
+              </button>
+              
+              {showTestCredentials && (
+                <div className="mt-4 space-y-2 rounded-xl border border-white/15 bg-white/10 p-3">
+                  <p className="text-xs font-semibold text-white/70 uppercase tracking-wide">Mock Accounts (for testing)</p>
+                  {mockData.testCredentials.map((cred) => (
+                    <button
+                      key={cred.email}
+                      type="button"
+                      onClick={() => fillTestCredentials(cred)}
+                      className="block w-full rounded-lg bg-white/20 px-3 py-2 text-left text-xs text-white hover:bg-white/30 transition"
+                    >
+                      <div className="font-medium">{cred.name} ({cred.role === 'it-admin' ? 'IT Admin' : 'Super Admin'})</div>
+                      <div className="text-white/70">{cred.email}</div>
+                      <div className="text-white/50">Pass: {cred.password}</div>
+                    </button>
+                  ))}
+                  <p className="text-xs text-white/50 pt-2 border-t border-white/15">
+                    Click any account to auto-fill credentials
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
