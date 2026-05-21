@@ -200,9 +200,6 @@ export const LoginPage = () => {
               <span>{tl('Protected login for authorized staff only.')}</span>
             </div>
 
-            <div className="mt-6 text-xs text-white/70">
-              {tl('Use your existing backend-admin account credentials to sign in.')}
-            </div>
           </div>
         </div>
       </section>

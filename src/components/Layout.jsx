@@ -60,6 +60,7 @@ export const Layout = ({ children, title }) => {
             <SidebarItem to="/users" label={t('navUsers', 'Users')} open={sidebarOpen} icon={<SidebarIcon type="users" />} />
             <SidebarItem to="/reports" label={t('navReports', 'Reports')} open={sidebarOpen} icon={<SidebarIcon type="reports" />} />
             <SidebarItem to="/donations" label={t('navDonations', 'Donations')} open={sidebarOpen} icon={<SidebarIcon type="donations" />} />
+            <SidebarItem to="/adoptions" label={t('navAdoptions', 'Adoptions')} open={sidebarOpen} icon={<SidebarIcon type="adoptions" />} />
             <SidebarItem to="/organizations" label={t('navOrganizations', 'Organizations')} open={sidebarOpen} icon={<SidebarIcon type="organizations" />} />
             <SidebarItem to="/settings" label={t('navSettings', 'Settings')} open={sidebarOpen} icon={<SidebarIcon type="settings" />} />
           </nav>
@@ -213,6 +214,14 @@ const SidebarIcon = ({ type }) => {
           <path d="M3 20h18" />
           <path d="M5 20V8l7-4 7 4v12" />
           <path d="M9 20v-6h6v6" />
+        </svg>
+      );
+    case 'adoptions':
+      return (
+        <svg viewBox="0 0 24 24" {...commonProps} aria-hidden="true">
+          <path d="M12 21s-6.5-4.6-8.7-7.7A5.1 5.1 0 0 1 12 6a5.1 5.1 0 0 1 8.7 7.3C18.5 16.4 12 21 12 21Z" />
+          <path d="M12 10.2v4.8" />
+          <path d="M9.6 12.6h4.8" />
         </svg>
       );
     case 'settings':

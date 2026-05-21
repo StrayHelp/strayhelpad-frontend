@@ -1,7 +1,27 @@
 import axios from 'axios';
 
+function normalizeApiBaseUrl(rawBaseUrl) {
+  const fallback = 'http://localhost:5001/api';
+  if (!rawBaseUrl || typeof rawBaseUrl !== 'string') {
+    return fallback;
+  }
+
+  const trimmed = rawBaseUrl.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  const noTrailingSlash = trimmed.replace(/\/$/, '');
+  if (noTrailingSlash.endsWith('/api')) {
+    return noTrailingSlash;
+  }
+
+  return `${noTrailingSlash}/api`;
+}
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_BASE_URL),
+  timeout: Number(import.meta.env.VITE_API_TIMEOUT || 10000),
   headers: { 'Content-Type': 'application/json' }
 });
 

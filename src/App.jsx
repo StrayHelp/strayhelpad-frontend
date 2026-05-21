@@ -7,6 +7,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { DonationsPage } from './pages/DonationsPage';
+import { AdoptionsPage } from './pages/AdoptionsPage';
 import { OrganizationsPage } from './pages/OrganizationsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ITAdminDashboardPage } from './pages/ITAdminDashboardPage';
@@ -43,6 +44,11 @@ function App() {
           <Route path="/donations" element={(
             <RequireAuth allowedRoles={['super-admin']}>
               <DonationsPage />
+            </RequireAuth>
+          )} />
+          <Route path="/adoptions" element={(
+            <RequireAuth allowedRoles={['super-admin']}>
+              <AdoptionsPage />
             </RequireAuth>
           )} />
           <Route path="/organizations" element={(
