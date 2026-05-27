@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ITAdminLayout } from '../components/ITAdminLayout';
+import { exportToCsv } from '../utils/exportCsv';
 import { ConfirmationDialog } from '../components/itadmin/ConfirmationDialog';
 import { PasswordResetModal } from '../components/itadmin/PasswordResetModal';
 import { AccountDetailsModal } from '../components/itadmin/AccountDetailsModal';
@@ -9,8 +10,7 @@ import {
   fetchAccounts,
   fetchAccountDetails,
   resetAccountPassword,
-  updateAccountStatus,
-  updateAccountEmail
+  updateAccountStatus
 } from '../services/itAdminService';
 import { useI18n } from '../hooks/useI18n';
 
@@ -31,7 +31,7 @@ export const ITAdminAccountsPage = () => {
   const [selectedAccount, setSelectedAccount] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [tempPassword, setTempPassword] = useState('');
+  const [resetEmail, setResetEmail] = useState('');
   
   // Confirmation Dialog States
   const [confirmDialog, setConfirmDialog] = useState({
@@ -114,27 +114,14 @@ export const ITAdminAccountsPage = () => {
         showToast(`Account ${confirmDialog.newStatus === 'Active' ? 'activated' : 'suspended'} successfully`);
       } else if (confirmDialog.type === 'password') {
         const result = await resetAccountPassword(confirmDialog.accountId);
-        setTempPassword(result.tempPassword);
+        setResetEmail(result.email || '');
         setShowPasswordModal(true);
-        showToast('Password reset successful');
+        showToast('Password reset — temporary password sent to account email');
       }
     } catch (err) {
       showToast(err.response?.data?.message || tl('Action failed'), 'error');
     } finally {
       setConfirmDialog(prev => ({ ...prev, isOpen: false, isLoading: false }));
-    }
-  };
-
-  const handleUpdateEmail = async (newEmail) => {
-    if (!selectedAccount) return;
-    
-    try {
-      await updateAccountEmail(selectedAccount.id, newEmail);
-      setSelectedAccount(prev => ({ ...prev, email: newEmail }));
-      await loadAccounts();
-      showToast('Email updated successfully');
-    } catch (err) {
-      showToast(err.response?.data?.message || tl('Failed to update email'), 'error');
     }
   };
 
@@ -187,7 +174,17 @@ export const ITAdminAccountsPage = () => {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm hover:bg-[#f5f7f3]">
+            <button
+              className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm hover:bg-[#f5f7f3]"
+              onClick={() => exportToCsv(accounts, 'accounts', [
+                { key: 'id', label: 'ID' },
+                { key: 'name', label: 'Name' },
+                { key: 'email', label: 'Email' },
+                { key: 'role', label: 'Role' },
+                { key: 'status', label: 'Status' },
+                { key: 'joined', label: 'Joined' },
+              ])}
+            >
               {tl('Export')}
             </button>
           </div>
@@ -375,18 +372,17 @@ export const ITAdminAccountsPage = () => {
         isOpen={showDetailsModal}
         account={selectedAccount}
         onClose={() => setShowDetailsModal(false)}
-        onUpdateEmail={handleUpdateEmail}
         onResetPassword={handleResetPassword}
         onStatusChange={handleUpdateStatus}
       />
 
       <PasswordResetModal
         isOpen={showPasswordModal}
-        accountName={selectedAccount?.name}
-        tempPassword={tempPassword}
+        accountName={confirmDialog.accountName}
+        accountEmail={resetEmail}
         onClose={() => {
           setShowPasswordModal(false);
-          setTempPassword('');
+          setResetEmail('');
         }}
       />
 

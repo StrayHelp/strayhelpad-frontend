@@ -8,7 +8,7 @@ export async function fetchDashboardStats() {
     users: s.usersTotal,
     donations: s.paidDonations,
     reports: s.pendingReports,
-    organizations: s.openCampaigns
+    organizations: s.totalOrganizations ?? s.openCampaigns ?? 0
   };
 }
 

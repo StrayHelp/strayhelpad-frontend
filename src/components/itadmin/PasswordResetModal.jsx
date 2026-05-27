@@ -1,15 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-export const PasswordResetModal = ({ isOpen, accountName, tempPassword, onClose }) => {
-  const [copied, setCopied] = useState(false);
-
+export const PasswordResetModal = ({ isOpen, accountName, accountEmail, onClose }) => {
   if (!isOpen) return null;
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(tempPassword);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
@@ -27,26 +19,24 @@ export const PasswordResetModal = ({ isOpen, accountName, tempPassword, onClose 
           </button>
         </div>
 
-        <div className="mt-6 rounded-lg border border-[#e2e6dc] bg-[#f5f7f3] p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-[#7a8476]">Temporary Password</p>
-          <div className="mt-2 flex items-center gap-2">
-            <code className="flex-1 font-mono text-sm font-semibold text-[#2c3226]">{tempPassword}</code>
-            <button
-              onClick={copyToClipboard}
-              className={`rounded-lg px-3 py-2 text-xs font-medium transition ${
-                copied
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-white text-[#5a6457] hover:bg-[#f0f1ee]'
-              } border border-[#e2e6dc]`}
-            >
-              {copied ? '✓ Copied' : 'Copy'}
-            </button>
+        <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
+          <div className="flex items-start gap-3">
+            <svg className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-green-800">Temporary password sent</p>
+              <p className="mt-1 text-sm text-green-700">
+                A temporary password has been sent to{' '}
+                <span className="font-semibold">{accountEmail || 'the account email address'}</span>.
+              </p>
+            </div>
           </div>
         </div>
 
         <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
           <p className="text-xs text-amber-800">
-            <span className="font-semibold">Note:</span> This password is displayed only once. Save it securely. The user must change it on first login.
+            <span className="font-semibold">Note:</span> The user must check their inbox and change their password after first login.
           </p>
         </div>
 

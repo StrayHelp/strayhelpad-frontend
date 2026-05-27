@@ -4,35 +4,19 @@ export const AccountDetailsModal = ({
   isOpen,
   account,
   onClose,
-  onUpdateEmail,
   onResetPassword,
   onStatusChange,
   isLoading = false
 }) => {
-  const [editingEmail, setEditingEmail] = useState(false);
-  const [newEmail, setNewEmail] = useState('');
   const [localAccount, setLocalAccount] = useState(account);
 
   useEffect(() => {
     if (account) {
       setLocalAccount(account);
-      setNewEmail(account.email || '');
     }
   }, [account]);
 
   if (!isOpen || !localAccount) return null;
-
-  const handleEmailSave = async () => {
-    if (newEmail && newEmail !== localAccount.email) {
-      await onUpdateEmail(newEmail);
-      setEditingEmail(false);
-    }
-  };
-
-  const handleEmailCancel = () => {
-    setNewEmail(localAccount.email);
-    setEditingEmail(false);
-  };
 
   const isActive = localAccount.status === 'Active';
 
@@ -68,45 +52,9 @@ export const AccountDetailsModal = ({
               </div>
 
               <div>
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-[#7a8476]">Email Address</label>
-                  {!editingEmail && (
-                    <button
-                      onClick={() => setEditingEmail(true)}
-                      className="text-xs font-semibold text-[#77806d] hover:text-[#66715b]"
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-                {editingEmail ? (
-                  <div className="mt-2 space-y-2">
-                    <input
-                      type="email"
-                      value={newEmail}
-                      onChange={(e) => setNewEmail(e.target.value)}
-                      className="w-full rounded-lg border border-[#e2e6dc] bg-white px-3 py-2 text-sm text-[#2c3226] focus:outline-none focus:ring-2 focus:ring-[#77806d]/30"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={handleEmailSave}
-                        disabled={isLoading}
-                        className="flex-1 rounded-lg bg-[#77806d] px-3 py-2 text-xs font-medium text-white hover:bg-[#66715b] disabled:opacity-50"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={handleEmailCancel}
-                        disabled={isLoading}
-                        className="flex-1 rounded-lg border border-[#e2e6dc] bg-white px-3 py-2 text-xs font-medium text-[#5a6457] hover:bg-[#f5f7f3]"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="mt-1 text-sm text-[#2c3226]">{localAccount.email}</p>
-                )}
+                <label className="text-xs font-semibold text-[#7a8476]">Email Address</label>
+                <p className="mt-1 text-sm text-[#2c3226]">{localAccount.email}</p>
+                <p className="mt-0.5 text-xs text-[#9aa294]">Email address cannot be changed by IT Admin.</p>
               </div>
             </div>
           </div>

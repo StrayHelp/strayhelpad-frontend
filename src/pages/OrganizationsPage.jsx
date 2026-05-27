@@ -8,6 +8,7 @@ import {
   updateOrganizationStatus
 } from '../services/adminService';
 import { fetchPendingKyc } from '../services/kycService';
+import { exportToCsv } from '../utils/exportCsv';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
@@ -278,6 +279,10 @@ export const OrganizationsPage = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [appSearch, setAppSearch] = useState('');
+  const [appStatusFilter, setAppStatusFilter] = useState('');
+  const [approvedSearch, setApprovedSearch] = useState('');
+  const [approvedStatusFilter, setApprovedStatusFilter] = useState('');
 
   const loadOrganizations = async () => {
     setLoading(true);
@@ -328,7 +333,22 @@ export const OrganizationsPage = () => {
     loadOrganizations();
   }, [settings?.system?.defaultLanguage, settings?.system?.timezone]);
 
+  const pendingApplications = applications.filter(a => a.status !== 'Active');
   const approvedOrganizations = applications.filter(a => a.status === 'Active');
+
+  const filteredApplications = pendingApplications.filter(a => {
+    const q = appSearch.toLowerCase();
+    const matchSearch = !appSearch || a.name?.toLowerCase().includes(q) || a.contactEmail?.toLowerCase().includes(q);
+    const matchStatus = !appStatusFilter || a.status === appStatusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const filteredApproved = approvedOrganizations.filter(a => {
+    const q = approvedSearch.toLowerCase();
+    const matchSearch = !approvedSearch || a.name?.toLowerCase().includes(q) || a.contactEmail?.toLowerCase().includes(q);
+    const matchStatus = !approvedStatusFilter || a.status === approvedStatusFilter;
+    return matchSearch && matchStatus;
+  });
 
   const statusStyles = {
     Pending: 'badge badge-pending',
@@ -383,16 +403,30 @@ export const OrganizationsPage = () => {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h2 className="section-title">{t('orgApplications', 'Organization Applications')}</h2>
-              <p className="section-subtitle">{tl('Total:')} {applications.length}</p>
+              <p className="section-subtitle">{tl('Total:')} {pendingApplications.length}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-outline">{tl('Export')}</button>
+              <button className="btn-outline" onClick={() => exportToCsv(filteredApplications, 'org-applications', [
+                { key: 'id', label: 'ID' },
+                { key: 'name', label: 'Organization' },
+                { key: 'contactName', label: 'Contact Person' },
+                { key: 'contactEmail', label: 'Email' },
+                { key: 'contactPhone', label: 'Phone' },
+                { key: 'status', label: 'Status' },
+                { key: 'applied', label: 'Date Applied' },
+              ])}>{tl('Export')}</button>
             </div>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <div className="relative w-full max-w-md">
-              <input type="text" placeholder={tl('Search organization or email')} className="input-search" />
+              <input
+                type="text"
+                placeholder={tl('Search organization or email')}
+                value={appSearch}
+                onChange={e => setAppSearch(e.target.value)}
+                className="input-search"
+              />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                   <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" stroke="currentColor" strokeWidth="1.6" />
@@ -402,10 +436,14 @@ export const OrganizationsPage = () => {
             </div>
             <div className="filter-pill">
               <span className="filter-label">{tl('Status')}</span>
-              <select className="filter-select">
-                <option>{tl('All')}</option>
-                <option>{tl('Pending')}</option>
-                <option>{tl('Rejected')}</option>
+              <select
+                className="filter-select"
+                value={appStatusFilter}
+                onChange={e => setAppStatusFilter(e.target.value)}
+              >
+                <option value="">{tl('All')}</option>
+                <option value="Pending">{tl('Pending')}</option>
+                <option value="Suspended">{tl('Rejected')}</option>
               </select>
             </div>
           </div>
@@ -422,9 +460,9 @@ export const OrganizationsPage = () => {
             </div>
             {loading ? (
               <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading organizations…')}</div>
-            ) : applications.length === 0 ? (
+            ) : filteredApplications.length === 0 ? (
               <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No applications found.')}</div>
-            ) : applications.map((row, index) => (
+            ) : filteredApplications.map((row, index) => (
               <div
                 key={`${row.id}-${index}`}
                 className="grid grid-cols-[0.5fr_1fr_1.5fr_2fr_1fr_1fr_7rem] items-center gap-2 table-row-item"
@@ -454,7 +492,7 @@ export const OrganizationsPage = () => {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-            <span>{tl('Total:')} {applications.length} {tl('applications')}</span>
+            <span>{tl('Showing')} {filteredApplications.length} {tl('of')} {pendingApplications.length} {tl('applications')}</span>
           </div>
         </div>
 
@@ -465,13 +503,27 @@ export const OrganizationsPage = () => {
               <p className="section-subtitle">{tl('Total:')} {approvedOrganizations.length}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-outline">{tl('Export')}</button>
+              <button className="btn-outline" onClick={() => exportToCsv(filteredApproved, 'approved-organizations', [
+                { key: 'id', label: 'ID' },
+                { key: 'name', label: 'Organization' },
+                { key: 'contactName', label: 'Contact Person' },
+                { key: 'contactEmail', label: 'Email' },
+                { key: 'contactPhone', label: 'Phone' },
+                { key: 'status', label: 'Status' },
+                { key: 'applied', label: 'Approved Date' },
+              ])}>{tl('Export')}</button>
             </div>
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <div className="relative w-full max-w-md">
-              <input type="text" placeholder={tl('Search organization or email')} className="input-search" />
+              <input
+                type="text"
+                placeholder={tl('Search organization or email')}
+                value={approvedSearch}
+                onChange={e => setApprovedSearch(e.target.value)}
+                className="input-search"
+              />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                   <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" stroke="currentColor" strokeWidth="1.6" />
@@ -481,10 +533,14 @@ export const OrganizationsPage = () => {
             </div>
             <div className="filter-pill">
               <span className="filter-label">{tl('Status')}</span>
-              <select className="filter-select">
-                <option>{tl('All')}</option>
-                <option>{tl('Active')}</option>
-                <option>{tl('Suspended')}</option>
+              <select
+                className="filter-select"
+                value={approvedStatusFilter}
+                onChange={e => setApprovedStatusFilter(e.target.value)}
+              >
+                <option value="">{tl('All')}</option>
+                <option value="Active">{tl('Active')}</option>
+                <option value="Suspended">{tl('Suspended')}</option>
               </select>
             </div>
           </div>
@@ -501,9 +557,9 @@ export const OrganizationsPage = () => {
             </div>
             {loading ? (
               <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading…')}</div>
-            ) : approvedOrganizations.length === 0 ? (
+            ) : filteredApproved.length === 0 ? (
               <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No approved organizations.')}</div>
-            ) : approvedOrganizations.map((org, index) => (
+            ) : filteredApproved.map((org, index) => (
               <div key={`${org.id}-${index}`} className="grid grid-cols-[0.5fr_1fr_1.6fr_2fr_1fr_1fr_7rem] items-center gap-2 table-row-item">
                 <span><input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" /></span>
                 <span className="table-id">{org.id}</span>
@@ -538,7 +594,7 @@ export const OrganizationsPage = () => {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-            <span>{tl('Total:')} {approvedOrganizations.length} {tl('approved organizations')}</span>
+            <span>{tl('Showing')} {filteredApproved.length} {tl('of')} {approvedOrganizations.length} {tl('approved organizations')}</span>
           </div>
         </div>
       </div>

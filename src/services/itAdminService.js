@@ -108,7 +108,7 @@ export async function resetAccountPassword(accountId) {
   const response = await api.post(`/admin/accounts/${accountId}/reset-password`);
   return {
     success: true,
-    tempPassword: response.data.temporaryPassword,
+    email: response.data.account?.email,
     message: response.data.message
   };
 }
