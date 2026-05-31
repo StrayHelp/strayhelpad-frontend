@@ -5,6 +5,7 @@ import { deleteReport } from '../services/reportService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
+import { exportToXlsx } from '../utils/exportXlsx';
 
 export const ReportsPage = () => {
   const { settings } = useSettingsContext();
@@ -15,6 +16,9 @@ export const ReportsPage = () => {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -26,9 +30,11 @@ export const ReportsPage = () => {
         user: r.reporter_name,
         title: r.description?.slice(0, 40) || '—',
         description: r.description,
+        location: r.location || '—',
         category: tl('Rescue'),
         date: formatDate(r.created_at, settings),
-        status: 'Active'
+        rawDate: r.report_date || r.created_at,
+        status: r.status || 'Active'
       })));
     } catch (err) {
       setError(err.response?.data?.message || err.message || tl('Unable to load reports'));
@@ -52,6 +58,21 @@ export const ReportsPage = () => {
     )));
   };
 
+  const now = Date.now();
+  const filteredReports = reports.filter(r => {
+    const q = search.toLowerCase();
+    const matchSearch = !search || [r.id, r.title, r.description, r.user, r.location, r.category, r.status, r.date]
+      .some(v => String(v ?? '').toLowerCase().includes(q));
+    const matchStatus = !statusFilter || r.status?.toLowerCase() === statusFilter.toLowerCase();
+    const matchDate = !dateFilter || (() => {
+      const ms = new Date(r.rawDate).getTime();
+      if (dateFilter === '7') return now - ms <= 7 * 86400000;
+      if (dateFilter === '30') return now - ms <= 30 * 86400000;
+      return true;
+    })();
+    return matchSearch && matchStatus && matchDate;
+  });
+
   return (
     <Layout title={t('pageReports', 'Reports')}>
       {actionToast && (
@@ -69,7 +90,17 @@ export const ReportsPage = () => {
             <p className="section-subtitle">{tl('Total reports')}: {reports.length}</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <button className="btn-outline">
+            <button
+              className="btn-outline"
+              onClick={() => exportToXlsx(reports, 'reports_export.xlsx', [
+                { label: 'Report ID',   key: 'id' },
+                { label: 'Description', key: row => row.description?.slice(0, 80) || '' },
+                { label: 'Location',    key: 'location' },
+                { label: 'Status',      key: 'status' },
+                { label: 'Reporter',    key: 'user' },
+                { label: 'Date',        key: 'date' },
+              ])}
+            >
               {tl('Export')}
             </button>
           </div>
@@ -81,6 +112,8 @@ export const ReportsPage = () => {
               type="text"
               placeholder={tl('Search by title, description, or user')}
               className="input-search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -91,18 +124,30 @@ export const ReportsPage = () => {
           </div>
           <div className="filter-pill">
             <span className="filter-label">{tl('Status')}</span>
-            <select className="filter-select">
-              <option>{tl('All')}</option>
-              <option>{tl('Active')}</option>
-              <option>{tl('Flagged')}</option>
+            <select
+              className="filter-select"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="">{tl('All')}</option>
+              <option value="Pending">{tl('Pending')}</option>
+              <option value="Active">{tl('Active')}</option>
+              <option value="Ongoing">{tl('Ongoing')}</option>
+              <option value="Rescued">{tl('Rescued')}</option>
+              <option value="Closed">{tl('Closed')}</option>
+              <option value="Flagged">{tl('Flagged')}</option>
             </select>
           </div>
           <div className="filter-pill">
             <span className="filter-label">{tl('Date')}</span>
-            <select className="filter-select">
-              <option>{tl('Any time')}</option>
-              <option>{tl('Last 7 days')}</option>
-              <option>{tl('Last 30 days')}</option>
+            <select
+              className="filter-select"
+              value={dateFilter}
+              onChange={e => setDateFilter(e.target.value)}
+            >
+              <option value="">{tl('Any time')}</option>
+              <option value="7">{tl('Last 7 days')}</option>
+              <option value="30">{tl('Last 30 days')}</option>
             </select>
           </div>
         </div>
@@ -126,9 +171,9 @@ export const ReportsPage = () => {
           </div>
           {loading ? (
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading reports…')}</div>
-          ) : reports.length === 0 ? (
+          ) : filteredReports.length === 0 ? (
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No reports found.')}</div>
-          ) : reports.map((report, index) => (
+          ) : filteredReports.map((report, index) => (
             <div
               key={`${report.id}-${index}`}
               className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-row-item"
@@ -172,7 +217,7 @@ export const ReportsPage = () => {
                 </button>
                 <button
                   className="icon-btn text-[#a25d5d]"
-                  title={tl('Delete report')}
+                  title={tl('Archive report')}
                   onClick={() => setDeleteConfirm(report)}
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -189,7 +234,7 @@ export const ReportsPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>{tl('Total:')} {reports.length} {tl('reports')}</span>
+          <span>{tl('Showing')} {filteredReports.length} {tl('of')} {reports.length} {tl('reports')}</span>
           <div className="flex items-center gap-2">
             <button className="btn-page">
               {tl('Prev')}
@@ -284,8 +329,8 @@ export const ReportsPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Delete report?')}</h3>
-                <p className="text-sm text-[#9aa294]">{tl('This action cannot be undone.')}</p>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Archive report?')}</h3>
+                <p className="text-sm text-[#9aa294]">The report will be moved to the Archive page. You can restore it at any time from Settings → Archive.</p>
               </div>
             </div>
 
@@ -307,7 +352,7 @@ export const ReportsPage = () => {
                 onClick={async () => {
                   try {
                     await deleteReport(deleteConfirm.id);
-                    showActionToast(`✓ ${tl('Report moved to recycle bin')}`);
+                    showActionToast(`✓ ${tl('Report moved to archive')}`);
                     await load();
                     setDeleteConfirm(null);
                   } catch (err) {
@@ -315,7 +360,7 @@ export const ReportsPage = () => {
                   }
                 }}
               >
-                {tl('Delete')}
+                {tl('Archive')}
               </button>
             </div>
           </div>

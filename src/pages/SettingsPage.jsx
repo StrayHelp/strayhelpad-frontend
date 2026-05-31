@@ -8,6 +8,7 @@ import {
   updatePassword
 } from '../services/settingsService';
 import { useI18n } from '../hooks/useI18n';
+import { exportToXlsx } from '../utils/exportXlsx';
 
 export const SettingsPage = () => {
   const { t, tl } = useI18n();
@@ -148,7 +149,7 @@ export const SettingsPage = () => {
         donationDrives: []
       });
     } catch (error) {
-      setRecycleError(error?.response?.data?.message || error.message || tl('Failed to load recycle bin'));
+      setRecycleError(error?.response?.data?.message || error.message || tl('Failed to load archive'));
     } finally {
       setRecycleLoading(false);
     }
@@ -336,7 +337,7 @@ export const SettingsPage = () => {
         }
         showRecycleToast(`✓ ${tl(deleteConfirm.type)} ${tl('deleted forever')}`);
       } catch (error) {
-        setRecycleError(error?.response?.data?.message || error.message || tl('Failed to delete recycle bin item'));
+        setRecycleError(error?.response?.data?.message || error.message || tl('Failed to delete archive item'));
       } finally {
         setDeleteConfirm(null);
       }
@@ -367,7 +368,7 @@ export const SettingsPage = () => {
         }
         showRecycleToast(`✓ ${tl(restoreConfirm.type)} ${tl('restored')}`);
       } catch (error) {
-        setRecycleError(error?.response?.data?.message || error.message || tl('Failed to restore recycle bin item'));
+        setRecycleError(error?.response?.data?.message || error.message || tl('Failed to restore archive item'));
       } finally {
         setRestoreConfirm(null);
       }
@@ -384,7 +385,7 @@ export const SettingsPage = () => {
     { id: 'organization', label: t('settingsTabOrganization', 'Organization'), icon: 'organization' },
     { id: 'donation', label: t('settingsTabDonations', 'Donations'), icon: 'donations' },
     { id: 'security', label: t('settingsTabSecurity', 'Security'), icon: 'security' },
-    { id: 'recycle', label: t('settingsTabRecycle', 'Recycle Bin'), icon: 'deleted' },
+    { id: 'recycle', label: t('settingsTabRecycle', 'Archive'), icon: 'deleted' },
   ];
 
   return (
@@ -914,19 +915,22 @@ export const SettingsPage = () => {
         {/* Deleted Accounts */}
         {activeTab === 'recycle' && (
           <div className="space-y-6">
-            <SettingSection title={tl('Recycle Bin')} description={tl('Manage deleted users, organizations, and reports')}>
+            <SettingSection title={tl('Archive')} description={tl('Manage archived users, organizations, and reports')}>
               <div className="space-y-6">
                 <div>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Users')}</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.users.length}</span>
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Archived Users')}</h4>
+                    <div className="flex items-center gap-3">
+                      <button className="rounded-full border border-[#e2e6dc] bg-white px-3 py-1 text-xs font-semibold text-[#6c7669]" onClick={() => exportToXlsx(recycleBinData.users, 'archived_users_export.xlsx', [{ label: 'ID', key: 'id' }, { label: 'Name', key: 'name' }, { label: 'Email', key: 'email' }, { label: 'Date Archived', key: 'deleted' }])}>{tl('Export')}</button>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.users.length}</span>
+                    </div>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
                       <span>{tl('User ID')}</span>
                       <span>{tl('Profile')}</span>
                       <span>{tl('Type')}</span>
-                      <span>{tl('Date Deleted')}</span>
+                      <span>{tl('Date Archived')}</span>
                       <span className="pr-2 text-right">{tl('Actions')}</span>
                     </div>
                     {recycleBinData.users.map((user, index) => (
@@ -972,15 +976,18 @@ export const SettingsPage = () => {
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Organizations')}</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.organizations.length}</span>
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Archived Organizations')}</h4>
+                    <div className="flex items-center gap-3">
+                      <button className="rounded-full border border-[#e2e6dc] bg-white px-3 py-1 text-xs font-semibold text-[#6c7669]" onClick={() => exportToXlsx(recycleBinData.organizations, 'archived_organizations_export.xlsx', [{ label: 'ID', key: 'id' }, { label: 'Name', key: 'name' }, { label: 'Date Archived', key: 'deleted' }])}>{tl('Export')}</button>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.organizations.length}</span>
+                    </div>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
                       <span>{tl('Org ID')}</span>
                       <span>{tl('Organization')}</span>
                       <span>{tl('Type')}</span>
-                      <span>{tl('Date Deleted')}</span>
+                      <span>{tl('Date Archived')}</span>
                       <span className="pr-2 text-right">{tl('Actions')}</span>
                     </div>
                     {recycleBinData.organizations.map((org, index) => (
@@ -1026,15 +1033,18 @@ export const SettingsPage = () => {
 
                 <div>
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Reports')}</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.reports.length}</span>
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Archived Reports')}</h4>
+                    <div className="flex items-center gap-3">
+                      <button className="rounded-full border border-[#e2e6dc] bg-white px-3 py-1 text-xs font-semibold text-[#6c7669]" onClick={() => exportToXlsx(recycleBinData.reports, 'archived_reports_export.xlsx', [{ label: 'ID', key: 'id' }, { label: 'Report', key: 'title' }, { label: 'Category', key: 'category' }, { label: 'Date Archived', key: 'deleted' }])}>{tl('Export')}</button>
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.reports.length}</span>
+                    </div>
                   </div>
                   <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
                     <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
                       <span>{tl('Report ID')}</span>
                       <span>{tl('Report')}</span>
                       <span>{tl('Category')}</span>
-                      <span>{tl('Date Deleted')}</span>
+                      <span>{tl('Date Archived')}</span>
                       <span className="pr-2 text-right">{tl('Actions')}</span>
                     </div>
                     {recycleBinData.reports.map((report, index) => (
@@ -1075,62 +1085,8 @@ export const SettingsPage = () => {
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Deleted Donation Drives')}</h4>
-                    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Total:')} {recycleBinData.donationDrives.length}</span>
-                  </div>
-                  <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
-                    <div className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
-                      <span>{tl('Drive ID')}</span>
-                      <span>{tl('Donation Drive')}</span>
-                      <span>{tl('Type')}</span>
-                      <span>{tl('Date Deleted')}</span>
-                      <span className="pr-2 text-right">{tl('Actions')}</span>
-                    </div>
-                    {recycleBinData.donationDrives.map((drive, index) => (
-                      <div
-                        key={`${drive.id}-${index}`}
-                        className="grid grid-cols-[1fr_2.2fr_1.2fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-3 text-sm text-[#5a6457]"
-                      >
-                        <span className="text-xs font-semibold text-[#9aa294]">{drive.id}</span>
-                        <div>
-                          <p className="font-semibold text-[#4b5548]">{drive.title}</p>
-                          <p className="text-xs text-[#9aa294]">{drive.organization}</p>
-                        </div>
-                        <span className="text-xs text-[#9aa294]">{tl('Donation drive')}</span>
-                        <span className="text-xs text-[#9aa294]">{drive.deleted}</span>
-                        <div className="flex items-center justify-end gap-2 pr-2">
-                          <button
-                            className="btn-outline px-3 py-1 text-xs"
-                            onClick={() => openRestoreConfirm({
-                              type: 'Donation drive',
-                              name: drive.title,
-                              id: drive.id,
-                              itemTypeKey: 'donationDrives'
-                            })}
-                          >
-                            {tl('Restore')}
-                          </button>
-                          <button
-                            className="btn-outline px-3 py-1 text-xs text-[#a25d5d]"
-                            onClick={() => openDeleteConfirm({
-                              type: 'Donation drive',
-                              name: drive.title,
-                              id: drive.id,
-                              itemTypeKey: 'donationDrives'
-                            })}
-                          >
-                            {tl('Delete')}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 {recycleLoading && (
-                  <p className="text-sm text-[#7a8476]">{tl('Loading recycle bin...')}</p>
+                  <p className="text-sm text-[#7a8476]">{tl('Loading archive...')}</p>
                 )}
 
                 {recycleError && (

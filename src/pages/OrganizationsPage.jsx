@@ -8,7 +8,7 @@ import {
   updateOrganizationStatus
 } from '../services/adminService';
 import { fetchPendingKyc } from '../services/kycService';
-import { exportToCsv } from '../utils/exportCsv';
+import { exportToXlsx } from '../utils/exportXlsx';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
@@ -273,6 +273,8 @@ export const OrganizationsPage = () => {
   const { t, tl } = useI18n();
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [previewDocument, setPreviewDocument] = useState(null);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [suspendConfirm, setSuspendConfirm] = useState(null);
   const [actionToast, setActionToast] = useState('');
@@ -283,6 +285,7 @@ export const OrganizationsPage = () => {
   const [appStatusFilter, setAppStatusFilter] = useState('');
   const [approvedSearch, setApprovedSearch] = useState('');
   const [approvedStatusFilter, setApprovedStatusFilter] = useState('');
+  const [suspendReason, setSuspendReason] = useState('');
 
   const loadOrganizations = async () => {
     setLoading(true);
@@ -294,11 +297,11 @@ export const OrganizationsPage = () => {
       ]);
 
       setApplications(data.map((o) => {
-        const normalizedStatus = o.status === 'Verified'
-          ? 'Active'
-          : o.status === 'Rejected'
-            ? 'Suspended'
-            : 'Pending';
+        const normalizedStatus =
+          o.status === 'Verified' ? 'Active'
+          : o.status === 'Suspended' ? 'Suspended'
+          : o.status === 'Rejected' ? 'Rejected'
+          : 'Pending';
 
         const relatedKycRecord = findMatchingKycRecord(o, pendingKycRecords);
         const normalizedDocuments = [o, relatedKycRecord]
@@ -353,7 +356,8 @@ export const OrganizationsPage = () => {
   const statusStyles = {
     Pending: 'badge badge-pending',
     Active: 'badge badge-active',
-    Suspended: 'badge badge-rejected'
+    Suspended: 'badge badge-rejected',
+    Rejected: 'badge badge-flagged'
   };
 
   const handleApprove = async (application) => {
@@ -367,12 +371,14 @@ export const OrganizationsPage = () => {
     }
   };
 
-  const handleReject = async (application) => {
+  const handleReject = async (application, reason) => {
     try {
-      await rejectOrganization(application.id, 'Rejected by admin review');
+      await rejectOrganization(application.id, reason);
       showActionToast(`✓ ${application.name} ${tl('rejected')}`);
       await loadOrganizations();
       setSelectedApplication(null);
+      setShowRejectForm(false);
+      setRejectReason('');
     } catch (err) {
       setError(err.response?.data?.message || err.message || tl('Unable to reject organization'));
     }
@@ -406,14 +412,14 @@ export const OrganizationsPage = () => {
               <p className="section-subtitle">{tl('Total:')} {pendingApplications.length}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-outline" onClick={() => exportToCsv(filteredApplications, 'org-applications', [
-                { key: 'id', label: 'ID' },
-                { key: 'name', label: 'Organization' },
-                { key: 'contactName', label: 'Contact Person' },
-                { key: 'contactEmail', label: 'Email' },
-                { key: 'contactPhone', label: 'Phone' },
-                { key: 'status', label: 'Status' },
-                { key: 'applied', label: 'Date Applied' },
+              <button className="btn-outline" onClick={() => exportToXlsx(filteredApplications, 'organizations_export.xlsx', [
+                { label: 'ID',             key: 'id' },
+                { label: 'Organization',   key: 'name' },
+                { label: 'Contact Person', key: 'contactName' },
+                { label: 'Email',          key: 'contactEmail' },
+                { label: 'Phone',          key: 'contactPhone' },
+                { label: 'Status',         key: 'status' },
+                { label: 'Date Applied',   key: 'applied' },
               ])}>{tl('Export')}</button>
             </div>
           </div>
@@ -503,14 +509,14 @@ export const OrganizationsPage = () => {
               <p className="section-subtitle">{tl('Total:')} {approvedOrganizations.length}</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <button className="btn-outline" onClick={() => exportToCsv(filteredApproved, 'approved-organizations', [
-                { key: 'id', label: 'ID' },
-                { key: 'name', label: 'Organization' },
-                { key: 'contactName', label: 'Contact Person' },
-                { key: 'contactEmail', label: 'Email' },
-                { key: 'contactPhone', label: 'Phone' },
-                { key: 'status', label: 'Status' },
-                { key: 'applied', label: 'Approved Date' },
+              <button className="btn-outline" onClick={() => exportToXlsx(filteredApproved, 'organizations_approved_export.xlsx', [
+                { label: 'ID',             key: 'id' },
+                { label: 'Organization',   key: 'name' },
+                { label: 'Contact Person', key: 'contactName' },
+                { label: 'Email',          key: 'contactEmail' },
+                { label: 'Phone',          key: 'contactPhone' },
+                { label: 'Status',         key: 'status' },
+                { label: 'Approved Date',  key: 'applied' },
               ])}>{tl('Export')}</button>
             </div>
           </div>
@@ -579,7 +585,7 @@ export const OrganizationsPage = () => {
                       <path d="M5 7h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                     </svg>
                   </button>
-                  <button className="icon-btn text-[#a25d5d]" title={tl('Delete organization')} onClick={() => setDeleteConfirm(org)}>
+                  <button className="icon-btn text-[#a25d5d]" title={tl('Archive organization')} onClick={() => setDeleteConfirm(org)}>
                     <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
                       <path d="M4 7h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                       <path d="M10 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -603,6 +609,8 @@ export const OrganizationsPage = () => {
         <div className="modal-overlay" onClick={() => {
           setSelectedApplication(null);
           setPreviewDocument(null);
+          setShowRejectForm(false);
+          setRejectReason('');
         }}>
           <div className="modal-card max-w-2xl" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
@@ -661,10 +669,37 @@ export const OrganizationsPage = () => {
                 </div>
 
 
-                <div className="mt-5 flex items-center gap-3">
-                  <button type="button" className="btn-pill-primary flex-1" onClick={() => handleApprove(selectedApplication)}>{tl('Accept')}</button>
-                  <button type="button" className="btn-pill-danger flex-1" onClick={() => handleReject(selectedApplication)}>{tl('Reject')}</button>
-                </div>
+                {!showRejectForm ? (
+                  <div className="mt-5 flex items-center gap-3">
+                    <button type="button" className="btn-pill-primary flex-1" onClick={() => handleApprove(selectedApplication)}>{tl('Accept')}</button>
+                    <button type="button" className="btn-pill-danger flex-1" onClick={() => setShowRejectForm(true)}>{tl('Reject')}</button>
+                  </div>
+                ) : (
+                  <div className="mt-5 space-y-3">
+                    <label className="block text-sm font-semibold text-[#4b5548]">{tl('Reason for Rejection')} <span className="text-red-500">*</span></label>
+                    <textarea
+                      rows={3}
+                      className="w-full rounded-xl border border-[#e2e6dc] bg-white px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:border-[#6b8f71] focus:outline-none"
+                      placeholder={tl('e.g. Missing government ID, blurry shelter photo...')}
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                    />
+                    {rejectReason.trim().length > 0 && rejectReason.trim().length < 5 && (
+                      <p className="text-xs text-red-500">{tl('Reason must be at least 5 characters.')}</p>
+                    )}
+                    <div className="flex items-center gap-3">
+                      <button type="button" className="btn-outline flex-1" onClick={() => { setShowRejectForm(false); setRejectReason(''); }}>{tl('Cancel')}</button>
+                      <button
+                        type="button"
+                        className="btn-pill-danger flex-1"
+                        disabled={rejectReason.trim().length < 5}
+                        onClick={() => handleReject(selectedApplication, rejectReason.trim())}
+                      >
+                        {tl('Confirm Rejection')}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -675,6 +710,8 @@ export const OrganizationsPage = () => {
                 onClick={() => {
                   setSelectedApplication(null);
                   setPreviewDocument(null);
+                  setShowRejectForm(false);
+                  setRejectReason('');
                 }}
               >
                 {tl('Close')}
@@ -752,8 +789,8 @@ export const OrganizationsPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Delete organization?')}</h3>
-                <p className="text-sm text-[#9aa294]">{tl('This action cannot be undone.')}</p>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Archive organization?')}</h3>
+                <p className="text-sm text-[#9aa294]">The organization will be moved to the Archive page. You can restore it at any time from Settings → Archive.</p>
               </div>
             </div>
             <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
@@ -767,7 +804,7 @@ export const OrganizationsPage = () => {
                 onClick={async () => {
                   try {
                     await deleteOrganization(deleteConfirm.id);
-                    showActionToast(`✓ ${tl('Organization moved to recycle bin')}`);
+                    showActionToast(`✓ ${tl('Organization moved to archive')}`);
                     await loadOrganizations();
                     setDeleteConfirm(null);
                   } catch (err) {
@@ -775,7 +812,7 @@ export const OrganizationsPage = () => {
                   }
                 }}
               >
-                {tl('Delete')}
+                {tl('Archive')}
               </button>
             </div>
           </div>
@@ -801,18 +838,32 @@ export const OrganizationsPage = () => {
             <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('Organization:')}</span> {suspendConfirm.name} ({suspendConfirm.id})
             </div>
+            {suspendConfirm.status === 'Active' && (
+              <div className="mt-3">
+                <label className="text-xs font-semibold text-[#7a8476]">{tl('Reason for suspension')} <span className="text-[#9aa294]">({tl('optional')})</span></label>
+                <textarea
+                  placeholder={tl('Enter reason for suspension...')}
+                  value={suspendReason}
+                  onChange={e => setSuspendReason(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-[#e2e6dc] px-3 py-2 text-sm text-[#5a6457] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                  rows={3}
+                  maxLength={1000}
+                />
+              </div>
+            )}
             <div className="mt-6 flex gap-3">
-              <button type="button" className="btn-secondary flex-1" onClick={() => setSuspendConfirm(null)}>{tl('Cancel')}</button>
+              <button type="button" className="btn-secondary flex-1" onClick={() => { setSuspendConfirm(null); setSuspendReason(''); }}>{tl('Cancel')}</button>
               <button
                 type="button"
                 className="btn-pill-primary flex-1"
                 onClick={async () => {
                   try {
                     const nextStatus = suspendConfirm.status === 'Active' ? 'Suspended' : 'Active';
-                    await updateOrganizationStatus(suspendConfirm.id, nextStatus);
+                    await updateOrganizationStatus(suspendConfirm.id, nextStatus, nextStatus === 'Suspended' ? suspendReason : undefined);
                     showActionToast(`✓ ${tl('Organization')} ${nextStatus === 'Suspended' ? tl('suspended') : tl('activated')}`);
                     await loadOrganizations();
                     setSuspendConfirm(null);
+                    setSuspendReason('');
                   } catch (err) {
                     setError(err.response?.data?.message || err.message || tl('Unable to update organization status'));
                   }

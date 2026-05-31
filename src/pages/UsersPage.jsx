@@ -4,6 +4,7 @@ import { deleteUser, fetchUsers, updateUserStatus } from '../services/adminServi
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
+import { exportToXlsx } from '../utils/exportXlsx';
 
 export const UsersPage = () => {
   const { settings } = useSettingsContext();
@@ -14,6 +15,8 @@ export const UsersPage = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const loadUsers = async () => {
     setLoading(true);
@@ -44,6 +47,14 @@ export const UsersPage = () => {
     setTimeout(() => setActionToast(''), 3000);
   };
 
+  const filteredUsers = users.filter(u => {
+    const q = search.toLowerCase();
+    const matchSearch = !search || [u.id, u.name, u.email, u.role, u.status]
+      .some(v => String(v ?? '').toLowerCase().includes(q));
+    const matchStatus = !statusFilter || u.status?.toLowerCase() === statusFilter.toLowerCase();
+    return matchSearch && matchStatus;
+  });
+
   return (
     <Layout title={t('pageUsers', 'Users')}>
       {actionToast && (
@@ -60,8 +71,19 @@ export const UsersPage = () => {
             <h2 className="text-2xl font-semibold text-[#4b5548]">{t('usersDirectory', 'User Directory')}</h2>
             <p className="mt-1 text-sm text-[#7a8476]">{tl('Total users')}: {users.length}</p>
           </div>
+
           <div className="flex flex-wrap items-center gap-3">
-            <button className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm">
+            <button
+              className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2 text-sm font-semibold text-[#6c7669] shadow-sm"
+              onClick={() => exportToXlsx(users, 'users_export.xlsx', [
+                { label: 'User ID',    key: 'id' },
+                { label: 'Name',       key: 'name' },
+                { label: 'Email',      key: 'email' },
+                { label: 'Role',       key: 'role' },
+                { label: 'Status',     key: 'status' },
+                { label: 'Date Joined',key: 'joined' },
+              ])}
+            >
               {tl('Export')}
             </button>
           </div>
@@ -73,6 +95,8 @@ export const UsersPage = () => {
               type="text"
               placeholder={tl('Search by name or email')}
               className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -83,10 +107,14 @@ export const UsersPage = () => {
           </div>
           <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Status')}</span>
-            <select className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none">
-              <option>{tl('All')}</option>
-              <option>{tl('Active')}</option>
-              <option>{tl('Suspended')}</option>
+            <select
+              className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none"
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+            >
+              <option value="">{tl('All')}</option>
+              <option value="Active">{tl('Active')}</option>
+              <option value="Suspended">{tl('Suspended')}</option>
             </select>
           </div>
         </div>
@@ -108,9 +136,9 @@ export const UsersPage = () => {
           </div>
           {loading ? (
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading users…')}</div>
-          ) : users.length === 0 ? (
+          ) : filteredUsers.length === 0 ? (
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No users found.')}</div>
-          ) : users.map((user, index) => (
+          ) : filteredUsers.map((user, index) => (
             <div
               key={`${user.id}-${index}`}
               className="grid grid-cols-[0.5fr_1fr_2.4fr_1fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
@@ -149,7 +177,7 @@ export const UsersPage = () => {
                 </button>
                 <button
                   className="icon-btn text-[#a25d5d]"
-                  title={tl('Delete user')}
+                  title={tl('Archive user')}
                   onClick={() => setDeleteConfirm(user)}
                 >
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -166,7 +194,7 @@ export const UsersPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>{tl('Total:')} {users.length} {tl('users')}</span>
+          <span>{tl('Showing')} {filteredUsers.length} {tl('of')} {users.length} {tl('users')}</span>
           <div className="flex items-center gap-2">
             <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
               {tl('Prev')}
@@ -192,8 +220,8 @@ export const UsersPage = () => {
                 </svg>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Delete user?')}</h3>
-                <p className="text-sm text-[#9aa294]">{tl('This action cannot be undone.')}</p>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Archive user?')}</h3>
+                <p className="text-sm text-[#9aa294]">The user will be moved to the Archive page. You can restore them at any time from Settings → Archive.</p>
               </div>
             </div>
 
@@ -215,7 +243,7 @@ export const UsersPage = () => {
                 onClick={async () => {
                   try {
                     await deleteUser(deleteConfirm.id);
-                    showActionToast(`✓ ${tl('User moved to recycle bin')}`);
+                    showActionToast(`✓ ${tl('User moved to archive')}`);
                     await loadUsers();
                     setDeleteConfirm(null);
                   } catch (err) {
@@ -223,7 +251,7 @@ export const UsersPage = () => {
                   }
                 }}
               >
-                {tl('Delete')}
+                {tl('Archive')}
               </button>
             </div>
           </div>

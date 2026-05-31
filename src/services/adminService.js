@@ -43,8 +43,8 @@ export async function fetchOrganizations() {
 }
 
 // PUT /api/admin/organizations/:id/status
-export async function updateOrganizationStatus(organizationId, status) {
-  const response = await api.put(`/admin/organizations/${encodeURIComponent(organizationId)}/status`, { status });
+export async function updateOrganizationStatus(organizationId, status, reason) {
+  const response = await api.put(`/admin/organizations/${encodeURIComponent(organizationId)}/status`, { status, reason: reason || undefined });
   return response.data.organization;
 }
 
@@ -76,4 +76,10 @@ export async function fetchDonations() {
 export async function fetchReports() {
   const response = await api.get('/reports');
   return response.data.reports;
+}
+
+// GET /api/admin/ledger
+export async function fetchTransactionLedger() {
+  const response = await api.get('/admin/ledger');
+  return response.data.ledger;
 }
