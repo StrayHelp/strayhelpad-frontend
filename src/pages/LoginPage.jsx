@@ -172,13 +172,6 @@ export const LoginPage = () => {
                   className="w-full rounded-xl border border-white/10 bg-white px-4 py-3 text-sm text-[#333333] shadow-[0_1px_0_rgba(255,255,255,0.65)_inset] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/35"
                   required
                 />
-                <button
-                  type="button"
-                  className="mt-2 ml-auto block text-sm font-medium text-white/90 hover:opacity-80"
-                  onClick={() => {}}
-                >
-                  {t('forgotPassword', 'Forgot password?')}
-                </button>
               </div>
 
               <button
