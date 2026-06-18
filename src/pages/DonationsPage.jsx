@@ -18,6 +18,9 @@ export const DonationsPage = () => {
   const [donSearch, setDonSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
   const [ledgerSearch, setLedgerSearch] = useState('');
+  const [donPage, setDonPage] = useState(1);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const load = async () => {
     setLoading(true);
@@ -75,6 +78,11 @@ export const DonationsPage = () => {
           .some(v => String(v ?? '').toLowerCase().includes(q));
       })
     : ledger;
+
+  const donTotalPages = Math.max(1, Math.ceil(filteredDonations.length / ITEMS_PER_PAGE));
+  const pageDonations = filteredDonations.slice((donPage - 1) * ITEMS_PER_PAGE, donPage * ITEMS_PER_PAGE);
+  const ledgerTotalPages = Math.max(1, Math.ceil(filteredLedger.length / ITEMS_PER_PAGE));
+  const pageLedger = filteredLedger.slice((ledgerPage - 1) * ITEMS_PER_PAGE, ledgerPage * ITEMS_PER_PAGE);
 
   return (
     <Layout title={t('pageDonations', 'Donations')}>
@@ -151,7 +159,7 @@ export const DonationsPage = () => {
                   placeholder={tl('Search by donor name or organization')}
                   className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
                   value={donSearch}
-                  onChange={e => setDonSearch(e.target.value)}
+                  onChange={e => { setDonSearch(e.target.value); setDonPage(1); }}
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -165,7 +173,7 @@ export const DonationsPage = () => {
                 <select
                   className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none"
                   value={methodFilter}
-                  onChange={e => setMethodFilter(e.target.value)}
+                  onChange={e => { setMethodFilter(e.target.value); setDonPage(1); }}
                 >
                   <option value="">{tl('All')}</option>
                   <option value="ewallet">{tl('Ewallet')}</option>
@@ -189,7 +197,7 @@ export const DonationsPage = () => {
                 <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading donations…')}</div>
               ) : filteredDonations.length === 0 ? (
                 <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No donations found.')}</div>
-              ) : filteredDonations.map((row, index) => (
+              ) : pageDonations.map((row, index) => (
                 <div
                   key={`${row.id}-${index}`}
                   className="grid grid-cols-[0.5fr_1.1fr_1.3fr_1.6fr_1.1fr_1fr_1fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
@@ -220,7 +228,24 @@ export const DonationsPage = () => {
             </div>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-              <span>{tl('Showing')} {filteredDonations.length} {tl('of')} {donations.length} {tl('transactions')}</span>
+              <span>{tl('Showing')} {pageDonations.length} {tl('of')} {filteredDonations.length} {tl('transactions')} &bull; {tl('Page')} {donPage} {tl('of')} {donTotalPages}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={donPage === 1}
+                  onClick={() => setDonPage(p => p - 1)}
+                >
+                  {tl('Prev')}
+                </button>
+                <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">{donPage}</button>
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={donPage === donTotalPages}
+                  onClick={() => setDonPage(p => p + 1)}
+                >
+                  {tl('Next')}
+                </button>
+              </div>
             </div>
           </>
         )}
@@ -234,7 +259,7 @@ export const DonationsPage = () => {
                   placeholder={tl('Search by donor, campaign, method, or amount')}
                   className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
                   value={ledgerSearch}
-                  onChange={e => setLedgerSearch(e.target.value)}
+                  onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1); }}
                 />
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -257,7 +282,7 @@ export const DonationsPage = () => {
                 <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading ledger…')}</div>
               ) : filteredLedger.length === 0 ? (
                 <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No ledger entries found.')}</div>
-              ) : filteredLedger.map((row) => {
+              ) : pageLedger.map((row) => {
                 const isIdempotent = row.payload?.idempotent === true;
                 const paymentStatus = row.payload?.paymentStatus || row.payload?.payment_status || '';
                 const event = row.payload?.event || '';
@@ -296,8 +321,25 @@ export const DonationsPage = () => {
               })}
             </div>
 
-            <div className="mt-5 text-sm text-[#7a8476]">
-              <span>{tl('Showing')} {filteredLedger.length} {tl('of')} {ledger.length} {tl('ledger entries')}</span>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
+              <span>{tl('Showing')} {pageLedger.length} {tl('of')} {filteredLedger.length} {tl('ledger entries')} &bull; {tl('Page')} {ledgerPage} {tl('of')} {ledgerTotalPages}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={ledgerPage === 1}
+                  onClick={() => setLedgerPage(p => p - 1)}
+                >
+                  {tl('Prev')}
+                </button>
+                <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">{ledgerPage}</button>
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={ledgerPage === ledgerTotalPages}
+                  onClick={() => setLedgerPage(p => p + 1)}
+                >
+                  {tl('Next')}
+                </button>
+              </div>
             </div>
           </>
         )}

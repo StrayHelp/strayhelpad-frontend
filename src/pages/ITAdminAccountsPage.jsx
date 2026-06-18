@@ -41,6 +41,8 @@ export const ITAdminAccountsPage = () => {
     accountName: null,
     isLoading: false
   });
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendCustomReason, setSuspendCustomReason] = useState('');
 
   const loadAccounts = useCallback(async () => {
     setLoading(true);
@@ -106,12 +108,17 @@ export const ITAdminAccountsPage = () => {
 
   const confirmAction = async () => {
     setConfirmDialog(prev => ({ ...prev, isLoading: true }));
-    
+
     try {
       if (confirmDialog.type === 'status') {
-        await updateAccountStatus(confirmDialog.accountId, confirmDialog.newStatus);
+        const reason = confirmDialog.newStatus === 'Suspended'
+          ? (suspendReason === 'Other' ? suspendCustomReason.trim() : suspendReason) || undefined
+          : undefined;
+        await updateAccountStatus(confirmDialog.accountId, confirmDialog.newStatus, reason);
         await loadAccounts();
         showToast(`Account ${confirmDialog.newStatus === 'Active' ? 'activated' : 'suspended'} successfully`);
+        setSuspendReason('');
+        setSuspendCustomReason('');
       } else if (confirmDialog.type === 'password') {
         const result = await resetAccountPassword(confirmDialog.accountId);
         setResetEmail(result.email || '');
@@ -403,9 +410,44 @@ export const ITAdminAccountsPage = () => {
         confirmText={confirmDialog.type === 'status' ? 'Confirm' : 'Reset Password'}
         isDangerous={confirmDialog.type === 'status' && confirmDialog.newStatus === 'Suspended'}
         onConfirm={confirmAction}
-        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() => { setConfirmDialog(prev => ({ ...prev, isOpen: false })); setSuspendReason(''); setSuspendCustomReason(''); }}
         isLoading={confirmDialog.isLoading}
-      />
+        confirmDisabled={
+          confirmDialog.type === 'status' && confirmDialog.newStatus === 'Suspended' &&
+          (!suspendReason || (suspendReason === 'Other' && !suspendCustomReason.trim()))
+        }
+      >
+        {confirmDialog.type === 'status' && confirmDialog.newStatus === 'Suspended' && (
+          <div>
+            <p className="mb-2 text-sm font-semibold text-[#2c3226]">{tl('Reason for suspension')} <span className="text-red-500">*</span></p>
+            <div className="flex flex-wrap gap-2">
+              {['Violation of Terms of Service', 'Fraudulent Activity', 'Abusive Behavior', 'Other'].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    suspendReason === r
+                      ? 'border-[#77806d] bg-[#77806d] text-white'
+                      : 'border-[#e2e6dc] bg-white text-[#5a6457] hover:bg-[#f5f7f3]'
+                  }`}
+                  onClick={() => { setSuspendReason(r); if (r !== 'Other') setSuspendCustomReason(''); }}
+                >
+                  {tl(r)}
+                </button>
+              ))}
+            </div>
+            {suspendReason === 'Other' && (
+              <textarea
+                className="mt-3 w-full rounded-xl border border-[#e2e6dc] px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                rows={3}
+                placeholder={tl('Enter custom reason…')}
+                value={suspendCustomReason}
+                onChange={e => setSuspendCustomReason(e.target.value)}
+              />
+            )}
+          </div>
+        )}
+      </ConfirmationDialog>
     </ITAdminLayout>
   );
 };

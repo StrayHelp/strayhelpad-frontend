@@ -7,7 +7,7 @@ export async function fetchDashboardStats() {
   return {
     users: s.usersTotal,
     donations: s.paidDonations,
-    reports: s.pendingReports,
+    reports: s.activeReports ?? s.pendingReports ?? 0,
     organizations: s.totalOrganizations ?? s.openCampaigns ?? 0
   };
 }
@@ -25,8 +25,8 @@ export async function fetchUsers() {
 }
 
 // PUT /api/admin/users/:id/status
-export async function updateUserStatus(userId, status) {
-  const response = await api.put(`/admin/users/${encodeURIComponent(userId)}/status`, { status });
+export async function updateUserStatus(userId, status, reason) {
+  const response = await api.put(`/admin/users/${encodeURIComponent(userId)}/status`, { status, reason: reason || undefined });
   return response.data.user;
 }
 
@@ -82,4 +82,16 @@ export async function fetchReports() {
 export async function fetchTransactionLedger() {
   const response = await api.get('/admin/ledger');
   return response.data.ledger;
+}
+
+// GET /api/admin/audit-logs
+export async function fetchAdminAuditLogs({ page = 1, limit = 10, search = '', action = '' } = {}) {
+  const params = { page, limit };
+  if (search) params.search = search;
+  if (action) params.action = action;
+  const response = await api.get('/admin/audit-logs', { params });
+  return {
+    logs: response.data.logs || [],
+    pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
+  };
 }

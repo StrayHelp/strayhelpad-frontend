@@ -44,3 +44,9 @@ export async function deleteReport(id) {
   const response = await api.delete(`/reports/${id}`);
   return response.data;
 }
+
+// PUT /api/reports/:id/flag (admin only)
+export async function flagReport(id, reason) {
+  const response = await api.put(`/reports/${id}/flag`, { reason });
+  return response.data;
+}

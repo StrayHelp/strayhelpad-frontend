@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { fetchReports } from '../services/adminService';
-import { deleteReport } from '../services/reportService';
+import { deleteReport, flagReport } from '../services/reportService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
@@ -12,6 +12,9 @@ export const ReportsPage = () => {
   const { t, tl } = useI18n();
   const [selectedReport, setSelectedReport] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [flagConfirm, setFlagConfirm] = useState(null);
+  const [flagReason, setFlagReason] = useState('');
+  const [flagCustomReason, setFlagCustomReason] = useState('');
   const [actionToast, setActionToast] = useState('');
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +22,8 @@ export const ReportsPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const load = async () => {
     setLoading(true);
@@ -73,6 +78,12 @@ export const ReportsPage = () => {
     return matchSearch && matchStatus && matchDate;
   });
 
+  const sortedReports = [...filteredReports].sort((a, b) =>
+    new Date(b.rawDate || 0) - new Date(a.rawDate || 0)
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedReports.length / ITEMS_PER_PAGE));
+  const pageReports = sortedReports.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   return (
     <Layout title={t('pageReports', 'Reports')}>
       {actionToast && (
@@ -113,7 +124,7 @@ export const ReportsPage = () => {
               placeholder={tl('Search by title, description, or user')}
               className="input-search"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -127,7 +138,7 @@ export const ReportsPage = () => {
             <select
               className="filter-select"
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             >
               <option value="">{tl('All')}</option>
               <option value="Pending">{tl('Pending')}</option>
@@ -143,7 +154,7 @@ export const ReportsPage = () => {
             <select
               className="filter-select"
               value={dateFilter}
-              onChange={e => setDateFilter(e.target.value)}
+              onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
             >
               <option value="">{tl('Any time')}</option>
               <option value="7">{tl('Last 7 days')}</option>
@@ -173,7 +184,7 @@ export const ReportsPage = () => {
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading reports…')}</div>
           ) : filteredReports.length === 0 ? (
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No reports found.')}</div>
-          ) : filteredReports.map((report, index) => (
+          ) : pageReports.map((report, index) => (
             <div
               key={`${report.id}-${index}`}
               className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-row-item"
@@ -234,15 +245,21 @@ export const ReportsPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>{tl('Showing')} {filteredReports.length} {tl('of')} {reports.length} {tl('reports')}</span>
+          <span>{tl('Showing')} {pageReports.length} {tl('of')} {filteredReports.length} {tl('reports')} &bull; {tl('Page')} {currentPage} {tl('of')} {totalPages}</span>
           <div className="flex items-center gap-2">
-            <button className="btn-page">
+            <button
+              className="btn-page"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+            >
               {tl('Prev')}
             </button>
-            <button className="btn-page-active">1</button>
-            <button className="btn-page">2</button>
-            <button className="btn-page">3</button>
-            <button className="btn-page">
+            <button className="btn-page-active">{currentPage}</button>
+            <button
+              className="btn-page"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
               {tl('Next')}
             </button>
           </div>
@@ -293,19 +310,18 @@ export const ReportsPage = () => {
             </div>
 
             <div className="mt-6 flex items-center justify-end">
-              <button
-                type="button"
-                className={selectedReport.status === 'Flagged' ? 'btn-outline mr-3' : 'btn-pill-danger mr-3'}
-                onClick={() => {
-                  const nextStatus = selectedReport.status === 'Flagged' ? 'Active' : 'Flagged';
-                  const action = nextStatus === 'Flagged' ? 'flagged' : 'unflagged';
-                  setReportStatusById(selectedReport.id, nextStatus);
-                  showActionToast(`✓ ${tl('Report')} ${tl(action)}`);
-                  setSelectedReport(null);
-                }}
-              >
-                {selectedReport.status === 'Flagged' ? tl('Unflag Report') : tl('Flag Report')}
-              </button>
+              {selectedReport.status !== 'Flagged' && (
+                <button
+                  type="button"
+                  className="btn-pill-danger mr-3"
+                  onClick={() => {
+                    setFlagConfirm(selectedReport);
+                    setSelectedReport(null);
+                  }}
+                >
+                  {tl('Flag Report')}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn-outline"
@@ -361,6 +377,87 @@ export const ReportsPage = () => {
                 }}
               >
                 {tl('Archive')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {flagConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f8efd1] text-[#9a7a1f]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 15V4l8 3 8-3v11l-8 3-8-3Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 7v14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Flag report?')}</h3>
+                <p className="text-sm text-[#9aa294]">{tl('Select a reason for flagging this report.')}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">{tl('Report:')}</span> {flagConfirm.title} ({flagConfirm.id})
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-semibold text-[#4b5548]">{tl('Reason')} <span className="text-red-500">*</span></p>
+              <div className="flex flex-wrap gap-2">
+                {['Spam', 'Inappropriate Content', 'Misleading Information', 'Other'].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      flagReason === r
+                        ? 'border-[#9a7a1f] bg-[#9a7a1f] text-white'
+                        : 'border-[#e2e6dc] bg-white text-[#6c7669] hover:bg-[#f5f7f3]'
+                    }`}
+                    onClick={() => { setFlagReason(r); if (r !== 'Other') setFlagCustomReason(''); }}
+                  >
+                    {tl(r)}
+                  </button>
+                ))}
+              </div>
+              {flagReason === 'Other' && (
+                <textarea
+                  className="mt-3 w-full rounded-xl border border-[#e2e6dc] px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                  rows={3}
+                  placeholder={tl('Enter custom reason…')}
+                  value={flagCustomReason}
+                  onChange={e => setFlagCustomReason(e.target.value)}
+                />
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={() => { setFlagConfirm(null); setFlagReason(''); setFlagCustomReason(''); }}
+              >
+                {tl('Cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn-pill-primary flex-1"
+                disabled={!flagReason || (flagReason === 'Other' && !flagCustomReason.trim())}
+                onClick={async () => {
+                  try {
+                    const reason = flagReason === 'Other' ? flagCustomReason.trim() : flagReason;
+                    await flagReport(flagConfirm.id, reason);
+                    setReportStatusById(flagConfirm.id, 'Flagged');
+                    showActionToast(`✓ ${tl('Report flagged')}`);
+                    setFlagConfirm(null);
+                    setFlagReason('');
+                    setFlagCustomReason('');
+                  } catch (err) {
+                    setError(err.response?.data?.message || err.message || tl('Unable to flag report'));
+                  }
+                }}
+              >
+                {tl('Confirm Flag')}
               </button>
             </div>
           </div>

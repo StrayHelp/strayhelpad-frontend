@@ -9,7 +9,9 @@ export const ConfirmationDialog = ({
   isDangerous = false,
   onConfirm,
   onCancel,
-  isLoading = false
+  isLoading = false,
+  confirmDisabled = false,
+  children
 }) => {
   if (!isOpen) return null;
 
@@ -18,6 +20,8 @@ export const ConfirmationDialog = ({
       <div className="relative m-4 w-full max-w-md rounded-2xl border border-white bg-white p-6 shadow-xl">
         <h2 className="text-xl font-semibold text-[#2c3226]">{title}</h2>
         <p className="mt-3 text-sm text-[#5a6457]">{message}</p>
+
+        {children && <div className="mt-4">{children}</div>}
 
         <div className="mt-6 flex gap-3">
           <button
@@ -29,7 +33,7 @@ export const ConfirmationDialog = ({
           </button>
           <button
             onClick={onConfirm}
-            disabled={isLoading}
+            disabled={isLoading || confirmDisabled}
             className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium text-white transition ${
               isDangerous
                 ? 'bg-red-600 hover:bg-red-700 disabled:bg-red-400'

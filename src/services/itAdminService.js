@@ -113,8 +113,8 @@ export async function resetAccountPassword(accountId) {
   };
 }
 
-export async function updateAccountStatus(accountId, status) {
-  const response = await api.patch(`/admin/accounts/${accountId}/status`, { status });
+export async function updateAccountStatus(accountId, status, reason) {
+  const response = await api.patch(`/admin/accounts/${accountId}/status`, { status, reason: reason || undefined });
   return mapAccount(response.data.account || {});
 }
 

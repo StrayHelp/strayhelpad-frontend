@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { fetchDashboardStats, fetchDashboardMonitoring, fetchDonations, fetchUsers } from '../services/adminService';
+import { fetchDashboardStats, fetchDashboardMonitoring, fetchDonations, fetchUsers, fetchAdminAuditLogs } from '../services/adminService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
@@ -39,6 +39,11 @@ export const DashboardPage = () => {
   const [recentUsers, setRecentUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const AUDIT_PER_PAGE = 10;
 
   const loadData = async () => {
     setLoading(true);
@@ -77,13 +82,30 @@ export const DashboardPage = () => {
     }
   };
 
+  const loadAuditLogs = async (page) => {
+    setAuditLoading(true);
+    try {
+      const result = await fetchAdminAuditLogs({ page, limit: AUDIT_PER_PAGE });
+      setAuditLogs(result.logs);
+      setAuditTotal(result.pagination.total);
+    } catch {
+      // silently fail — audit log is supplementary
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, [settings?.system?.defaultLanguage, settings?.system?.timezone]);
 
+  useEffect(() => {
+    loadAuditLogs(auditPage);
+  }, [auditPage]);
+
   const summaryCards = [
     {
-      label: tl('Total Users'),
+      label: tl('Total Users (incl. admins)'),
       value: stats?.users || 0,
       icon: (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
@@ -105,7 +127,7 @@ export const DashboardPage = () => {
       )
     },
     {
-      label: tl('Reports Count'),
+      label: tl('Active Reports'),
       value: stats?.reports || 0,
       icon: (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
@@ -225,42 +247,90 @@ export const DashboardPage = () => {
 
         <div className="card-lg">
           <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[#4b5548]">{tl('Logging & Monitoring')}</h2>
-            <button className="btn-pill-muted">{tl('View logs')}</button>
+            <h2 className="text-base font-semibold text-[#4b5548]">{tl('Admin Action Logs')}</h2>
+            <span className="text-xs text-[#9aa294]">
+              {auditTotal > 0 ? `${auditTotal} ${tl('total entries')}` : ''}
+            </span>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_1.8fr]">
-            <div className="rounded-2xl border border-[#ebefe4] bg-[#f8faf5] p-4">
-              <p className="text-xs font-semibold tracking-wide text-[#8f9789]">{monitoring?.auditSummary?.title || 'SECURE AUDIT LOGGING'}</p>
-              <p className="mt-2 text-sm text-[#6f796b]">
-                {monitoring?.auditSummary?.description || 'Transaction events, admin actions, and system changes are captured with tamper-evident hashing.'}
-              </p>
-
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-[#dde5d3] bg-white px-3 py-1 font-semibold text-[#6f796b]">
-                  {`${tl('Retention')}: ${monitoring?.auditSummary?.retentionDays || 365} ${tl('days')}`}
-                </span>
-                <span className="rounded-full border border-[#dde5d3] bg-white px-3 py-1 font-semibold text-[#6f796b]">
-                  {monitoring?.auditSummary?.encryption || 'AES-256 at rest'}
-                </span>
-              </div>
+          <div className="mt-4 overflow-x-auto">
+            <div className="grid grid-cols-[1fr_1.1fr_1.3fr_1.4fr_0.9fr] items-center table-head text-xs">
+              <span>{tl('Admin')}</span>
+              <span>{tl('Action')}</span>
+              <span>{tl('Target')}</span>
+              <span>{tl('Reason / Details')}</span>
+              <span>{tl('Date & Time')}</span>
             </div>
 
-            <div className="space-y-3">
-              {(monitoring?.events || []).map((event) => (
-                <div key={event.id} className="flex items-start justify-between rounded-xl border border-[#edf1e8] bg-white px-4 py-3">
+            {auditLoading ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading...')}</div>
+            ) : auditLogs.length === 0 ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No admin actions recorded yet.')}</div>
+            ) : auditLogs.map((log) => {
+              const actionColors = {
+                'Account Suspended': 'bg-red-50 text-red-700 border-red-200',
+                'Account Activated': 'bg-green-50 text-green-700 border-green-200',
+                'Report Flagged': 'bg-orange-50 text-orange-700 border-orange-200',
+                'Report Rejected': 'bg-red-50 text-red-700 border-red-200',
+                'Report Reviewed': 'bg-blue-50 text-blue-700 border-blue-200',
+                'Organization Approved': 'bg-green-50 text-green-700 border-green-200',
+                'Organization Rejected': 'bg-red-50 text-red-700 border-red-200',
+                'Organization Suspended': 'bg-orange-50 text-orange-700 border-orange-200',
+                'Adoption Post Archived': 'bg-gray-50 text-gray-600 border-gray-200',
+                'Email Updated': 'bg-blue-50 text-blue-700 border-blue-200',
+                'Password Changed': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+                'Password Reset': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+              };
+              const roleLabel = {
+                super_admin: 'Super Admin',
+                admin: 'Super Admin',
+                it_admin: 'IT Admin',
+              };
+              const badgeClass = actionColors[log.action] || 'bg-[#f7f9f3] text-[#6f796b] border-[#e2e7da]';
+              const reasonText = log.reason || log.details || '—';
+              return (
+                <div key={log.id} className="grid grid-cols-[1fr_1.1fr_1.3fr_1.4fr_0.9fr] items-start table-row-item text-sm gap-x-2">
                   <div>
-                    <p className="text-sm font-semibold text-[#4b5548]">{event.title}</p>
-                    <p className="text-xs text-[#97a08f]">{`${event.source} - ${formatRelativeTime(event.occurredAt)}`}</p>
+                    <p className="font-semibold text-[#4b5548] truncate">{log.performedBy}</p>
+                    <p className="text-xs text-[#9aa294]">{roleLabel[log.performedByRole] || log.performedByRole || 'Admin'}</p>
                   </div>
-                  <span className="rounded-full border border-[#e2e7da] bg-[#f7f9f3] px-3 py-1 text-xs font-semibold text-[#6f796b]">
-                    {event.status}
-                  </span>
+                  <div>
+                    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}>
+                      {log.action}
+                    </span>
+                  </div>
+                  <p className="text-[#4b5548] truncate">{log.account || '—'}</p>
+                  <p className="text-xs text-[#7a8476] line-clamp-2">{reasonText}</p>
+                  <div>
+                    <p className="text-xs text-[#9aa294]">{formatRelativeTime(log.timestamp)}</p>
+                    <p className="text-xs text-[#bcc3b5]">{log.timestamp ? new Date(log.timestamp).toLocaleDateString() : ''}</p>
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
+          {auditTotal > AUDIT_PER_PAGE && (
+            <div className="mt-4 flex items-center justify-between border-t border-[#f0f2ec] pt-4 text-sm">
+              <button
+                className="btn-pill-muted"
+                disabled={auditPage === 1}
+                onClick={() => setAuditPage(p => p - 1)}
+              >
+                {tl('Previous')}
+              </button>
+              <span className="text-xs text-[#9aa294]">
+                {tl('Page')} {auditPage} {tl('of')} {Math.ceil(auditTotal / AUDIT_PER_PAGE)}
+              </span>
+              <button
+                className="btn-pill-muted"
+                disabled={auditPage >= Math.ceil(auditTotal / AUDIT_PER_PAGE)}
+                onClick={() => setAuditPage(p => p + 1)}
+              >
+                {tl('Next')}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

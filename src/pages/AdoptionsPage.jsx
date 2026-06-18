@@ -56,6 +56,7 @@ const normalizePost = (post, settings) => ({
   breed: post?.breed || post?.category || post?.pet_type || post?.petType || 'Unspecified',
   location: post?.location || post?.city || post?.organization?.location || '—',
   datePosted: formatDate(post?.created_at || post?.createdAt || post?.posted_at, settings),
+  datePostedRaw: post?.created_at || post?.createdAt || post?.posted_at || null,
   status: toPostStatusLabel(post?.status),
   description: post?.description || post?.about || 'No description provided.',
   age: post?.age || post?.pet_age || '—',
@@ -125,6 +126,8 @@ export const AdoptionsPage = () => {
   const [postApplicationsModal, setPostApplicationsModal] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [applicantProfile, setApplicantProfile] = useState(null);
+  const [postsPage, setPostsPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const showActionToast = (message) => {
     setActionToast(message);
@@ -168,6 +171,12 @@ export const AdoptionsPage = () => {
     accepted: applications.filter((item) => item.status === 'Accepted').length,
     rejected: applications.filter((item) => item.status === 'Rejected').length
   }), [posts, applications]);
+
+  const sortedPosts = useMemo(() => [...posts].sort((a, b) =>
+    new Date(b.datePostedRaw || 0) - new Date(a.datePostedRaw || 0)
+  ), [posts]);
+  const postsTotalPages = Math.max(1, Math.ceil(sortedPosts.length / ITEMS_PER_PAGE));
+  const pagePosts = sortedPosts.slice((postsPage - 1) * ITEMS_PER_PAGE, postsPage * ITEMS_PER_PAGE);
 
   const postApplications = useMemo(() => {
     if (!postApplicationsModal) return [];
@@ -282,6 +291,26 @@ export const AdoptionsPage = () => {
           </div>
         ) : (
           <>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
+              <span>{tl('Page')} {postsPage} {tl('of')} {postsTotalPages} &bull; {posts.length} {tl('total posts')}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={postsPage === 1}
+                  onClick={() => setPostsPage(p => p - 1)}
+                >
+                  {tl('Prev')}
+                </button>
+                <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">{postsPage}</button>
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={postsPage === postsTotalPages}
+                  onClick={() => setPostsPage(p => p + 1)}
+                >
+                  {tl('Next')}
+                </button>
+              </div>
+            </div>
             <div className="table-wrap hidden lg:block">
               <div className="grid grid-cols-[1.1fr_1.1fr_1.4fr_1fr_1fr_1fr_1fr_10rem] items-center gap-2 table-head">
                 <span>{tl('Pet')}</span>
@@ -294,7 +323,7 @@ export const AdoptionsPage = () => {
                 <span className="text-center">{tl('Actions')}</span>
               </div>
 
-              {posts.map((post) => (
+              {pagePosts.map((post) => (
                 <div
                   key={post.id}
                   className="grid grid-cols-[1.1fr_1.1fr_1.4fr_1fr_1fr_1fr_1fr_10rem] items-center gap-2 table-row-item"
@@ -372,7 +401,7 @@ export const AdoptionsPage = () => {
             </div>
 
             <div className="mt-6 grid grid-cols-1 gap-4 lg:hidden">
-              {posts.map((post) => (
+              {pagePosts.map((post) => (
                 <div key={`mobile-${post.id}`} className="rounded-2xl border border-[#e6eadf] bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">

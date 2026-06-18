@@ -11,12 +11,16 @@ export const UsersPage = () => {
   const { t, tl } = useI18n();
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [suspendConfirm, setSuspendConfirm] = useState(null);
+  const [suspendReason, setSuspendReason] = useState('');
+  const [suspendCustomReason, setSuspendCustomReason] = useState('');
   const [actionToast, setActionToast] = useState('');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   const loadUsers = async () => {
     setLoading(true);
@@ -29,7 +33,8 @@ export const UsersPage = () => {
         email: user.email,
         role: user.role,
         status: user.account_status || 'Active',
-        joined: formatDate(user.created_at, settings)
+        joined: formatDate(user.created_at, settings),
+        rawJoined: user.created_at
       })));
     } catch (err) {
       setError(err.response?.data?.message || err.message || tl('Unable to load users'));
@@ -54,6 +59,12 @@ export const UsersPage = () => {
     const matchStatus = !statusFilter || u.status?.toLowerCase() === statusFilter.toLowerCase();
     return matchSearch && matchStatus;
   });
+
+  const sortedUsers = [...filteredUsers].sort((a, b) =>
+    new Date(b.rawJoined || 0) - new Date(a.rawJoined || 0)
+  );
+  const totalPages = Math.max(1, Math.ceil(sortedUsers.length / ITEMS_PER_PAGE));
+  const pageUsers = sortedUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <Layout title={t('pageUsers', 'Users')}>
@@ -96,7 +107,7 @@ export const UsersPage = () => {
               placeholder={tl('Search by name or email')}
               className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
             />
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
@@ -110,7 +121,7 @@ export const UsersPage = () => {
             <select
               className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none"
               value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
+              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             >
               <option value="">{tl('All')}</option>
               <option value="Active">{tl('Active')}</option>
@@ -138,7 +149,7 @@ export const UsersPage = () => {
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading users…')}</div>
           ) : filteredUsers.length === 0 ? (
             <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No users found.')}</div>
-          ) : filteredUsers.map((user, index) => (
+          ) : pageUsers.map((user, index) => (
             <div
               key={`${user.id}-${index}`}
               className="grid grid-cols-[0.5fr_1fr_2.4fr_1fr_1.2fr_7rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
@@ -194,15 +205,21 @@ export const UsersPage = () => {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>{tl('Showing')} {filteredUsers.length} {tl('of')} {users.length} {tl('users')}</span>
+          <span>{tl('Showing')} {pageUsers.length} {tl('of')} {filteredUsers.length} {tl('users')} &bull; {tl('Page')} {currentPage} {tl('of')} {totalPages}</span>
           <div className="flex items-center gap-2">
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
+            <button
+              className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+            >
               {tl('Prev')}
             </button>
-            <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">1</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">2</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">3</button>
-            <button className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669]">
+            <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">{currentPage}</button>
+            <button
+              className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+            >
               {tl('Next')}
             </button>
           </div>
@@ -280,24 +297,61 @@ export const UsersPage = () => {
               <span className="font-semibold text-[#4b5548]">{tl('User:')}</span> {suspendConfirm.name} ({suspendConfirm.id})
             </div>
 
+            {suspendConfirm.status === 'Active' && (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-semibold text-[#4b5548]">{tl('Reason for suspension')} <span className="text-red-500">*</span></p>
+                <div className="flex flex-wrap gap-2">
+                  {['Violation of Terms of Service', 'Fraudulent Activity', 'Abusive Behavior', 'Other'].map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        suspendReason === r
+                          ? 'border-[#77806d] bg-[#77806d] text-white'
+                          : 'border-[#e2e6dc] bg-white text-[#6c7669] hover:bg-[#f5f7f3]'
+                      }`}
+                      onClick={() => { setSuspendReason(r); if (r !== 'Other') setSuspendCustomReason(''); }}
+                    >
+                      {tl(r)}
+                    </button>
+                  ))}
+                </div>
+                {suspendReason === 'Other' && (
+                  <textarea
+                    className="mt-3 w-full rounded-xl border border-[#e2e6dc] px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                    rows={3}
+                    placeholder={tl('Enter custom reason…')}
+                    value={suspendCustomReason}
+                    onChange={e => setSuspendCustomReason(e.target.value)}
+                  />
+                )}
+              </div>
+            )}
+
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
                 className="btn-secondary flex-1"
-                onClick={() => setSuspendConfirm(null)}
+                onClick={() => { setSuspendConfirm(null); setSuspendReason(''); setSuspendCustomReason(''); }}
               >
                 {tl('Cancel')}
               </button>
               <button
                 type="button"
                 className="btn-pill-primary flex-1"
+                disabled={suspendConfirm.status === 'Active' && (!suspendReason || (suspendReason === 'Other' && !suspendCustomReason.trim()))}
                 onClick={async () => {
                   try {
                     const nextStatus = suspendConfirm.status === 'Active' ? 'Suspended' : 'Active';
-                    await updateUserStatus(suspendConfirm.id, nextStatus);
+                    const reason = nextStatus === 'Suspended'
+                      ? (suspendReason === 'Other' ? suspendCustomReason.trim() : suspendReason)
+                      : undefined;
+                    await updateUserStatus(suspendConfirm.id, nextStatus, reason);
                     showActionToast(`✓ ${tl('User')} ${nextStatus === 'Suspended' ? tl('suspended') : tl('activated')}`);
                     await loadUsers();
                     setSuspendConfirm(null);
+                    setSuspendReason('');
+                    setSuspendCustomReason('');
                   } catch (err) {
                     setError(err.response?.data?.message || err.message || tl('Failed to update user status'));
                   }
