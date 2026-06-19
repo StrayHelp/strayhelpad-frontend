@@ -67,7 +67,7 @@ export const UsersPage = () => {
   const pageUsers = sortedUsers.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
-    <Layout title={t('pageUsers', 'Users')}>
+    <Layout title={t('pageUsers', 'Users')} searchValue={search} onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}>
       {actionToast && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -242,11 +242,11 @@ export const UsersPage = () => {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+            <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('User:')}</span> {deleteConfirm.name} ({deleteConfirm.id})
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 px-6 pb-6 flex gap-3">
               <button
                 type="button"
                 className="btn-secondary flex-1"
@@ -256,7 +256,7 @@ export const UsersPage = () => {
               </button>
               <button
                 type="button"
-                className="btn-pill-danger flex-1"
+                className="btn-danger flex-1"
                 onClick={async () => {
                   try {
                     await deleteUser(deleteConfirm.id);
@@ -293,19 +293,19 @@ export const UsersPage = () => {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+            <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('User:')}</span> {suspendConfirm.name} ({suspendConfirm.id})
             </div>
 
             {suspendConfirm.status === 'Active' && (
-              <div className="mt-4">
+              <div className="mt-4 px-6">
                 <p className="mb-2 text-sm font-semibold text-[#4b5548]">{tl('Reason for suspension')} <span className="text-red-500">*</span></p>
                 <div className="flex flex-wrap gap-2">
                   {['Violation of Terms of Service', 'Fraudulent Activity', 'Abusive Behavior', 'Other'].map((r) => (
                     <button
                       key={r}
                       type="button"
-                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                      className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition outline-none focus:outline-none ${
                         suspendReason === r
                           ? 'border-[#77806d] bg-[#77806d] text-white'
                           : 'border-[#e2e6dc] bg-white text-[#6c7669] hover:bg-[#f5f7f3]'
@@ -328,7 +328,7 @@ export const UsersPage = () => {
               </div>
             )}
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 px-6 pb-6 flex gap-3">
               <button
                 type="button"
                 className="btn-secondary flex-1"
@@ -338,7 +338,7 @@ export const UsersPage = () => {
               </button>
               <button
                 type="button"
-                className="btn-pill-primary flex-1"
+                className={`flex-1 ${suspendConfirm.status === 'Active' ? 'btn-danger' : 'btn-primary'}`}
                 disabled={suspendConfirm.status === 'Active' && (!suspendReason || (suspendReason === 'Other' && !suspendCustomReason.trim()))}
                 onClick={async () => {
                   try {

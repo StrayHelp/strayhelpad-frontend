@@ -85,7 +85,11 @@ export const DonationsPage = () => {
   const pageLedger = filteredLedger.slice((ledgerPage - 1) * ITEMS_PER_PAGE, ledgerPage * ITEMS_PER_PAGE);
 
   return (
-    <Layout title={t('pageDonations', 'Donations')}>
+    <Layout
+      title={t('pageDonations', 'Donations')}
+      searchValue={activeTab === 'donations' ? donSearch : ledgerSearch}
+      onSearchChange={(v) => { activeTab === 'donations' ? setDonSearch(v) : setLedgerSearch(v); }}
+    >
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -359,22 +363,22 @@ export const DonationsPage = () => {
               <p className="text-sm text-[#7a8476]">{selectedDonation.name}</p>
             </div>
 
-            <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Organization')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedDonation.org}</span>
+            <div className="mt-6 space-y-4 text-sm">
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Organization')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedDonation.org}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Amount')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedDonation.amount}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Amount')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedDonation.amount}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Payment Method')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedDonation.method}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Payment Method')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedDonation.method}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Date')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedDonation.date}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Date')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedDonation.date}</span>
               </div>
             </div>
 

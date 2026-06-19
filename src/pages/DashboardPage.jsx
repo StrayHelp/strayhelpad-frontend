@@ -95,6 +95,7 @@ export const DashboardPage = () => {
     }
   };
 
+
   useEffect(() => {
     loadData();
   }, [settings?.system?.defaultLanguage, settings?.system?.timezone]);
@@ -105,7 +106,7 @@ export const DashboardPage = () => {
 
   const summaryCards = [
     {
-      label: tl('Total Users (incl. admins)'),
+      label: tl('Total Users'),
       value: stats?.users || 0,
       icon: (
         <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden="true">
@@ -178,7 +179,6 @@ export const DashboardPage = () => {
           <div className="card-lg">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#4b5548]">{tl('Recent Donations')}</h2>
-              <button className="btn-pill-muted">{tl('See all')}</button>
             </div>
 
             <div className="table-wrap">
@@ -210,7 +210,6 @@ export const DashboardPage = () => {
           <div className="card-lg">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-semibold text-[#4b5548]">{tl('Recent Users')}</h2>
-              <button className="btn-pill-muted">{tl('See all')}</button>
             </div>
 
             <div className="mt-4 space-y-4">
@@ -346,7 +345,7 @@ export const DashboardPage = () => {
               <span className="badge-neutral">{selectedUser.status}</span>
             </div>
 
-            <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
+            <div className="mt-6 px-6 grid gap-4 text-sm text-[#5a6457]">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-[#9aa294]">{tl('Email')}</span>
                 <span className="font-semibold text-[#4b5548]">{selectedUser.email}</span>
@@ -357,8 +356,8 @@ export const DashboardPage = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end">
-              <button type="button" className="btn-outline" onClick={() => setSelectedUser(null)}>
+            <div className="mt-6 px-6 pb-6 flex items-center justify-end">
+              <button type="button" className="btn-secondary" onClick={() => setSelectedUser(null)}>
                 {tl('Close')}
               </button>
             </div>

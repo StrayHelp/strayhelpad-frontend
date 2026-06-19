@@ -5,7 +5,7 @@ import { useSettingsContext } from '../context/SettingsContext';
 import { useI18n } from '../hooks/useI18n';
 import api from '../services/api';
 
-export const ITAdminLayout = ({ children, title }) => {
+export const ITAdminLayout = ({ children, title, searchValue, onSearchChange }) => {
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -102,6 +102,8 @@ export const ITAdminLayout = ({ children, title }) => {
                 type="text"
                 placeholder={t('searchHere', 'Search here')}
                 className="w-full rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 pl-10 text-sm text-[#5a6457] placeholder:text-[#9aa294] shadow-sm"
+                value={searchValue ?? ''}
+                onChange={e => onSearchChange?.(e.target.value)}
               />
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">

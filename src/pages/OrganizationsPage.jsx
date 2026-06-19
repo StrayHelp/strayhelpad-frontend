@@ -390,7 +390,7 @@ export const OrganizationsPage = () => {
   };
 
   return (
-    <Layout title={t('pageOrganizations', 'Organizations')}>
+    <Layout title={t('pageOrganizations', 'Organizations')} searchValue={appSearch} onSearchChange={(v) => setAppSearch(v)}>
       {actionToast && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -612,7 +612,7 @@ export const OrganizationsPage = () => {
           setShowRejectForm(false);
           setRejectReason('');
         }}>
-          <div className="modal-card max-w-2xl" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-[#9aa294]">{tl('Application Details')}</p>
@@ -622,88 +622,97 @@ export const OrganizationsPage = () => {
               <span className={statusStyles[selectedApplication.status] || 'badge badge-pending'}>{tl(selectedApplication.status)}</span>
             </div>
 
-            <div className="mt-5 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-              <div className="rounded-2xl border border-[#eef1e9] bg-[#fafaf8] p-4">
+            <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:gap-6 px-6">
+              {/* Left Column: Organization Profile */}
+              <div className="flex-shrink-0 w-full lg:w-2/5 rounded-2xl border border-[#eef1e9] bg-[#fafaf8] p-4 overflow-hidden">
                 <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Organization Profile')}</h4>
-                <p className="mt-3 text-sm leading-6 text-[#5a6457]">{selectedApplication.description || '—'}</p>
-                <div className="mt-5 grid gap-3 text-sm">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[#9aa294]">{tl('Contact Person')}</span>
-                    <span className="font-semibold text-[#4b5548]">{selectedApplication.contactName}</span>
+                <div className="mt-5 space-y-4 text-sm">
+                  <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                    <span className="text-[#9aa294] whitespace-nowrap">{tl('Contact Person')}:</span>
+                    <span className="font-semibold text-[#4b5548] break-words overflow-hidden">{selectedApplication.contactName}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[#9aa294]">{tl('Email')}</span>
-                    <span className="font-semibold text-[#4b5548]">{selectedApplication.contactEmail}</span>
+                  <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                    <span className="text-[#9aa294] whitespace-nowrap">{tl('Email')}:</span>
+                    <span className="font-semibold text-[#4b5548] break-words overflow-hidden">{selectedApplication.contactEmail}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[#9aa294]">{tl('Phone')}</span>
-                    <span className="font-semibold text-[#4b5548]">{selectedApplication.contactPhone}</span>
+                  <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                    <span className="text-[#9aa294] whitespace-nowrap">{tl('Phone')}:</span>
+                    <span className="font-semibold text-[#4b5548] break-words overflow-hidden">{selectedApplication.contactPhone}</span>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[#9aa294]">{tl('Location')}</span>
-                    <span className="font-semibold text-[#4b5548]">{selectedApplication.location}</span>
+                  <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                    <span className="text-[#9aa294] whitespace-nowrap">{tl('Location')}:</span>
+                    <span className="font-semibold text-[#4b5548] break-words overflow-hidden">{selectedApplication.location}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-[#eef1e9] p-4">
-                <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Uploaded Documents')}</h4>
-                <div className="mt-4 space-y-3">
-                  {selectedApplication.documents.length === 0 ? (
-                    <p className="text-sm text-[#9aa294]">{tl('No documents submitted.')}</p>
-                  ) : selectedApplication.documents.map((document) => (
-                    <div key={`${document.name}-${document.url}`} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e6eadf] bg-white px-3 py-3 text-sm text-[#5a6457]">
-                      <div>
-                        <p className="font-semibold text-[#4b5548]">{document.name}</p>
-                        <p className="text-xs text-[#9aa294]">{document.type}{document.size ? ` · ${document.size}` : ''}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="btn-pill-outline-sm"
-                        onClick={() => setPreviewDocument(document)}
-                      >
-                        {tl('View')}
-                      </button>
+              {/* Right Column: Documents + Actions */}
+              <div className="flex-1 min-w-0 flex flex-col rounded-2xl border border-[#eef1e9]">
+                <div className="modal-scroll-content pb-0">
+                  <div className="pb-4">
+                    <h4 className="text-sm font-semibold text-[#4b5548]">{tl('Uploaded Documents')}</h4>
+                    <div className="mt-4 space-y-3">
+                      {selectedApplication.documents.length === 0 ? (
+                        <p className="text-sm text-[#9aa294]">{tl('No documents submitted.')}</p>
+                      ) : selectedApplication.documents.map((document) => (
+                        <div key={`${document.name}-${document.url}`} className="flex flex-col gap-2 rounded-xl border border-[#e6eadf] bg-white px-3 py-3 text-sm text-[#5a6457]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="font-semibold text-[#4b5548] break-words">{document.name}</p>
+                              <p className="text-xs text-[#9aa294]">{document.type}{document.size ? ` · ${document.size}` : ''}</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="btn-pill-outline-sm flex-shrink-0"
+                              onClick={() => setPreviewDocument(document)}
+                            >
+                              {tl('View')}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                 </div>
 
-
-                {!showRejectForm ? (
-                  <div className="mt-5 flex items-center gap-3">
-                    <button type="button" className="btn-pill-primary flex-1" onClick={() => handleApprove(selectedApplication)}>{tl('Accept')}</button>
-                    <button type="button" className="btn-pill-danger flex-1" onClick={() => setShowRejectForm(true)}>{tl('Reject')}</button>
-                  </div>
-                ) : (
-                  <div className="mt-5 space-y-3">
-                    <label className="block text-sm font-semibold text-[#4b5548]">{tl('Reason for Rejection')} <span className="text-red-500">*</span></label>
-                    <textarea
-                      rows={3}
-                      className="w-full rounded-xl border border-[#e2e6dc] bg-white px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:border-[#6b8f71] focus:outline-none"
-                      placeholder={tl('e.g. Missing government ID, blurry shelter photo...')}
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                    />
-                    {rejectReason.trim().length > 0 && rejectReason.trim().length < 5 && (
-                      <p className="text-xs text-red-500">{tl('Reason must be at least 5 characters.')}</p>
-                    )}
-                    <div className="flex items-center gap-3">
-                      <button type="button" className="btn-outline flex-1" onClick={() => { setShowRejectForm(false); setRejectReason(''); }}>{tl('Cancel')}</button>
-                      <button
-                        type="button"
-                        className="btn-pill-danger flex-1"
-                        disabled={rejectReason.trim().length < 5}
-                        onClick={() => handleReject(selectedApplication, rejectReason.trim())}
-                      >
-                        {tl('Confirm Rejection')}
-                      </button>
+                {/* Sticky Action Buttons */}
+                <div className="modal-button-sticky">
+                  {!showRejectForm ? (
+                    <>
+                      <button type="button" className="btn-primary flex-1" onClick={() => handleApprove(selectedApplication)}>{tl('Accept')}</button>
+                      <button type="button" className="btn-danger flex-1" onClick={() => setShowRejectForm(true)}>{tl('Reject')}</button>
+                    </>
+                  ) : (
+                    <div className="w-full space-y-3">
+                      <label className="block text-sm font-semibold text-[#4b5548]">{tl('Reason for Rejection')} <span className="text-red-500">*</span></label>
+                      <textarea
+                        rows={3}
+                        className="w-full rounded-xl border border-[#e2e6dc] bg-white px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:border-[#6b8f71] focus:outline-none"
+                        placeholder={tl('e.g. Missing government ID, blurry shelter photo...')}
+                        value={rejectReason}
+                        onChange={(e) => setRejectReason(e.target.value)}
+                      />
+                      {rejectReason.trim().length > 0 && rejectReason.trim().length < 5 && (
+                        <p className="text-xs text-red-500">{tl('Reason must be at least 5 characters.')}</p>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <button type="button" className="btn-secondary flex-1" onClick={() => { setShowRejectForm(false); setRejectReason(''); }}>{tl('Cancel')}</button>
+                        <button
+                          type="button"
+                          className="btn-danger flex-1"
+                          disabled={rejectReason.trim().length < 5}
+                          onClick={() => handleReject(selectedApplication, rejectReason.trim())}
+                        >
+                          {tl('Confirm Rejection')}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end">
+            <div className="px-6 pb-6 flex items-center justify-end">
               <button
                 type="button"
                 className="btn-outline"
@@ -793,14 +802,14 @@ export const OrganizationsPage = () => {
                 <p className="text-sm text-[#9aa294]">The organization will be moved to the Archive page. You can restore it at any time from Settings → Archive.</p>
               </div>
             </div>
-            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+            <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('Organization:')}</span> {deleteConfirm.name} ({deleteConfirm.id})
             </div>
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 px-6 pb-6 flex gap-3">
               <button type="button" className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>{tl('Cancel')}</button>
               <button
                 type="button"
-                className="btn-pill-danger flex-1"
+                className="btn-danger flex-1"
                 onClick={async () => {
                   try {
                     await deleteOrganization(deleteConfirm.id);
@@ -835,11 +844,11 @@ export const OrganizationsPage = () => {
                 <p className="text-sm text-[#9aa294]">{tl('You can change this status again later.')}</p>
               </div>
             </div>
-            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+            <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('Organization:')}</span> {suspendConfirm.name} ({suspendConfirm.id})
             </div>
             {suspendConfirm.status === 'Active' && (
-              <div className="mt-3">
+              <div className="mt-3 px-6">
                 <label className="text-xs font-semibold text-[#7a8476]">{tl('Reason for suspension')} <span className="text-[#9aa294]">({tl('optional')})</span></label>
                 <textarea
                   placeholder={tl('Enter reason for suspension...')}
@@ -851,11 +860,11 @@ export const OrganizationsPage = () => {
                 />
               </div>
             )}
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 px-6 pb-6 flex gap-3">
               <button type="button" className="btn-secondary flex-1" onClick={() => { setSuspendConfirm(null); setSuspendReason(''); }}>{tl('Cancel')}</button>
               <button
                 type="button"
-                className="btn-pill-primary flex-1"
+                className={`flex-1 ${suspendConfirm.status === 'Active' ? 'btn-danger' : 'btn-primary'}`}
                 onClick={async () => {
                   try {
                     const nextStatus = suspendConfirm.status === 'Active' ? 'Suspended' : 'Active';

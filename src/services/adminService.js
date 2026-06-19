@@ -95,3 +95,9 @@ export async function fetchAdminAuditLogs({ page = 1, limit = 10, search = '', a
     pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
   };
 }
+
+// DELETE /api/admin/audit-logs
+export async function clearAuditLogs() {
+  const response = await api.delete('/admin/audit-logs');
+  return response.data;
+}

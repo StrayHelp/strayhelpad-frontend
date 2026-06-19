@@ -51,16 +51,16 @@ const resolveImage = (post) => {
 const normalizePost = (post, settings) => ({
   id: post?.id || post?.post_id || post?.listing_id || post?._id || Math.random().toString(36).slice(2),
   petImage: resolveImage(post),
-  petName: post?.pet_name || post?.petName || post?.name || 'Unnamed Pet',
+  petName: post?.animal_name || post?.pet_name || post?.petName || post?.name || 'Unnamed Pet',
   organizationName: post?.organization_name || post?.organizationName || post?.organization?.name || 'Unknown Organization',
-  breed: post?.breed || post?.category || post?.pet_type || post?.petType || 'Unspecified',
-  location: post?.location || post?.city || post?.organization?.location || '—',
+  breed: post?.species || post?.breed || post?.category || post?.pet_type || post?.petType || 'Unspecified',
+  location: post?.location || post?.animal_details?.location || post?.city || post?.organization?.location || '—',
   datePosted: formatDate(post?.created_at || post?.createdAt || post?.posted_at, settings),
   datePostedRaw: post?.created_at || post?.createdAt || post?.posted_at || null,
   status: toPostStatusLabel(post?.status),
-  description: post?.description || post?.about || 'No description provided.',
-  age: post?.age || post?.pet_age || '—',
-  gender: post?.gender || '—'
+  description: post?.description || post?.animal_details?.description || post?.about || 'No description provided.',
+  age: post?.animal_details?.age || post?.age || post?.pet_age || '—',
+  gender: post?.animal_details?.gender || post?.gender || '—'
 });
 
 const normalizeApplication = (application, posts, settings) => {
@@ -122,6 +122,7 @@ export const AdoptionsPage = () => {
   const [error, setError] = useState(null);
   const [actionToast, setActionToast] = useState('');
 
+  const [search, setSearch] = useState('');
   const [selectedPost, setSelectedPost] = useState(null);
   const [postApplicationsModal, setPostApplicationsModal] = useState(null);
   const [selectedApplication, setSelectedApplication] = useState(null);
@@ -172,9 +173,20 @@ export const AdoptionsPage = () => {
     rejected: applications.filter((item) => item.status === 'Rejected').length
   }), [posts, applications]);
 
-  const sortedPosts = useMemo(() => [...posts].sort((a, b) =>
-    new Date(b.datePostedRaw || 0) - new Date(a.datePostedRaw || 0)
-  ), [posts]);
+  const sortedPosts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const filtered = q
+      ? posts.filter((p) =>
+          p.petName.toLowerCase().includes(q) ||
+          p.organizationName.toLowerCase().includes(q) ||
+          p.breed.toLowerCase().includes(q) ||
+          p.location.toLowerCase().includes(q)
+        )
+      : posts;
+    return [...filtered].sort((a, b) =>
+      new Date(b.datePostedRaw || 0) - new Date(a.datePostedRaw || 0)
+    );
+  }, [posts, search]);
   const postsTotalPages = Math.max(1, Math.ceil(sortedPosts.length / ITEMS_PER_PAGE));
   const pagePosts = sortedPosts.slice((postsPage - 1) * ITEMS_PER_PAGE, postsPage * ITEMS_PER_PAGE);
 
@@ -241,7 +253,7 @@ export const AdoptionsPage = () => {
   ];
 
   return (
-    <Layout title={t('pageAdoptions', 'Adoptions')}>
+    <Layout title={t('pageAdoptions', 'Adoptions')} searchValue={search} onSearchChange={(v) => { setSearch(v); setPostsPage(1); }}>
       {actionToast && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
@@ -561,21 +573,21 @@ export const AdoptionsPage = () => {
               <p className="text-sm text-[#7a8476]">{selectedPost.organizationName}</p>
             </div>
 
-            <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Breed / Category')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedPost.breed}</span>
+            <div className="mt-6 px-6 space-y-4 text-sm">
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Breed / Category')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedPost.breed}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Location')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedPost.location}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Location')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedPost.location}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Date Posted')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedPost.datePosted}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Date Posted')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedPost.datePosted}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Status')}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Status')}:</span>
                 <span className={toPostStatusClass(selectedPost.status)}>{tl(selectedPost.status)}</span>
               </div>
               <div>
@@ -584,7 +596,7 @@ export const AdoptionsPage = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 px-6 pb-6 flex justify-end">
               <button type="button" className="btn-secondary" onClick={() => setSelectedPost(null)}>
                 {tl('Close')}
               </button>
@@ -606,11 +618,11 @@ export const AdoptionsPage = () => {
             </div>
 
             {postApplications.length === 0 ? (
-              <div className="mt-6 rounded-2xl border border-dashed border-[#dbe1d4] bg-[#fbfcf9] px-6 py-8 text-center text-sm text-[#7a8476]">
+              <div className="mt-6 px-6 rounded-2xl border border-dashed border-[#dbe1d4] bg-[#fbfcf9] py-8 text-center text-sm text-[#7a8476]">
                 {tl('No applications for this post yet.')}
               </div>
             ) : (
-              <div className="mt-6 space-y-3">
+              <div className="mt-6 px-6 space-y-3">
                 {postApplications.map((application) => (
                   <div key={`post-app-${application.id}`} className="flex items-center justify-between gap-3 rounded-xl border border-[#edf1e8] px-4 py-3">
                     <div>
@@ -623,7 +635,7 @@ export const AdoptionsPage = () => {
               </div>
             )}
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 px-6 pb-6 flex justify-end">
               <button type="button" className="btn-secondary" onClick={() => setPostApplicationsModal(null)}>
                 {tl('Close')}
               </button>
@@ -641,13 +653,13 @@ export const AdoptionsPage = () => {
               <p className="text-sm text-[#7a8476]">{selectedApplication.postName} - {selectedApplication.organizationName}</p>
             </div>
 
-            <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Application Date')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedApplication.dateApplied}</span>
+            <div className="mt-6 px-6 space-y-4 text-sm">
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Application Date')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedApplication.dateApplied}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Current Status')}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Current Status')}:</span>
                 <span className={toApplicationStatusClass(selectedApplication.status)}>{tl(selectedApplication.status)}</span>
               </div>
               <div>
@@ -659,7 +671,7 @@ export const AdoptionsPage = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 px-6 pb-6 flex justify-end">
               <button type="button" className="btn-secondary" onClick={() => setSelectedApplication(null)}>
                 {tl('Close')}
               </button>
@@ -677,14 +689,14 @@ export const AdoptionsPage = () => {
               <p className="text-sm text-[#7a8476]">{applicantProfile.organizationName}</p>
             </div>
 
-            <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Email')}</span>
-                <span className="font-semibold text-[#4b5548]">{applicantProfile.applicantEmail}</span>
+            <div className="mt-6 px-6 space-y-4 text-sm">
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Email')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{applicantProfile.applicantEmail}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Phone')}</span>
-                <span className="font-semibold text-[#4b5548]">{applicantProfile.applicantPhone}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Phone')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{applicantProfile.applicantPhone}</span>
               </div>
               <div>
                 <p className="text-[#9aa294]">{tl('Address')}</p>
@@ -692,7 +704,7 @@ export const AdoptionsPage = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 px-6 pb-6 flex justify-end">
               <button type="button" className="btn-secondary" onClick={() => setApplicantProfile(null)}>
                 {tl('Close')}
               </button>

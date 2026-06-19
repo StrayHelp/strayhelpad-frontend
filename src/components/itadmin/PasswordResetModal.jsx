@@ -5,7 +5,7 @@ export const PasswordResetModal = ({ isOpen, accountName, accountEmail, onClose 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="relative m-4 w-full max-w-md rounded-2xl border border-white bg-white p-6 shadow-xl">
+      <div className="relative m-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-xl font-semibold text-[#2c3226]">Password Reset Successful</h2>

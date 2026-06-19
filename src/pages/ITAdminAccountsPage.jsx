@@ -155,7 +155,7 @@ export const ITAdminAccountsPage = () => {
   const totalPages = Math.ceil(pagination.total / pagination.limit);
 
   return (
-    <ITAdminLayout title={tl('Account Management')}>
+    <ITAdminLayout title={tl('Account Management')} searchValue={searchQuery} onSearchChange={(v) => { setSearchQuery(v); setPagination(p => ({ ...p, page: 1 })); }}>
       {error && (
         <div className="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}

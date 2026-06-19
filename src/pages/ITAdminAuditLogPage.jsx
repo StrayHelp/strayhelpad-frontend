@@ -75,7 +75,7 @@ export const ITAdminAuditLogPage = () => {
   };
 
   return (
-    <ITAdminLayout title={tl('Audit Log')}>
+    <ITAdminLayout title={tl('Audit Log')} searchValue={searchQuery} onSearchChange={(v) => setSearchQuery(v)}>
       <div className="rounded-2xl bg-white p-6 shadow-sm">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold text-[#2c3226]">{tl('Audit Log')}</h2>

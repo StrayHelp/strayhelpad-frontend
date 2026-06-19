@@ -85,7 +85,7 @@ export const ReportsPage = () => {
   const pageReports = sortedReports.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
-    <Layout title={t('pageReports', 'Reports')}>
+    <Layout title={t('pageReports', 'Reports')} searchValue={search} onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}>
       {actionToast && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -282,25 +282,25 @@ export const ReportsPage = () => {
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-[#eef1e9] bg-[#fafaf8] p-4 text-sm text-[#5a6457]">
+            <div className="mt-5 px-6 rounded-2xl border border-[#eef1e9] bg-[#fafaf8] p-4 text-sm text-[#5a6457]">
               {selectedReport.description}
             </div>
 
-            <div className="mt-6 grid gap-4 text-sm text-[#5a6457]">
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Report ID')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedReport.id}</span>
+            <div className="mt-6 px-6 space-y-4 text-sm">
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Report ID')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedReport.id}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Category')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedReport.category}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Category')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedReport.category}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Date Posted')}</span>
-                <span className="font-semibold text-[#4b5548]">{selectedReport.date}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Date Posted')}:</span>
+                <span className="font-semibold text-[#4b5548] break-words">{selectedReport.date}</span>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[#9aa294]">{tl('Status')}</span>
+              <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                <span className="text-[#9aa294] whitespace-nowrap">{tl('Status')}:</span>
                 <span
                   className={`badge ${selectedReport.status === 'Active' ? 'badge-active' : 'badge-flagged'}`}
                 >
@@ -309,11 +309,11 @@ export const ReportsPage = () => {
               </div>
             </div>
 
-            <div className="mt-6 flex items-center justify-end">
+            <div className="mt-6 px-6 pb-6 flex items-center justify-end gap-3">
               {selectedReport.status !== 'Flagged' && (
                 <button
                   type="button"
-                  className="btn-pill-danger mr-3"
+                  className="btn-danger"
                   onClick={() => {
                     setFlagConfirm(selectedReport);
                     setSelectedReport(null);
@@ -324,7 +324,7 @@ export const ReportsPage = () => {
               )}
               <button
                 type="button"
-                className="btn-outline"
+                className="btn-secondary"
                 onClick={() => setSelectedReport(null)}
               >
                 {tl('Close')}
@@ -350,11 +350,11 @@ export const ReportsPage = () => {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+            <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('Report:')}</span> {deleteConfirm.title} ({deleteConfirm.id})
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 px-6 pb-6 flex gap-3">
               <button
                 type="button"
                 className="btn-secondary flex-1"
@@ -364,7 +364,7 @@ export const ReportsPage = () => {
               </button>
               <button
                 type="button"
-                className="btn-pill-danger flex-1"
+                className="btn-danger flex-1"
                 onClick={async () => {
                   try {
                     await deleteReport(deleteConfirm.id);
@@ -398,18 +398,18 @@ export const ReportsPage = () => {
               </div>
             </div>
 
-            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+            <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('Report:')}</span> {flagConfirm.title} ({flagConfirm.id})
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 px-6">
               <p className="mb-2 text-sm font-semibold text-[#4b5548]">{tl('Reason')} <span className="text-red-500">*</span></p>
               <div className="flex flex-wrap gap-2">
                 {['Spam', 'Inappropriate Content', 'Misleading Information', 'Other'].map((r) => (
                   <button
                     key={r}
                     type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition outline-none focus:outline-none ${
                       flagReason === r
                         ? 'border-[#9a7a1f] bg-[#9a7a1f] text-white'
                         : 'border-[#e2e6dc] bg-white text-[#6c7669] hover:bg-[#f5f7f3]'
@@ -431,7 +431,7 @@ export const ReportsPage = () => {
               )}
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 px-6 pb-6 flex gap-3">
               <button
                 type="button"
                 className="btn-secondary flex-1"
@@ -441,7 +441,7 @@ export const ReportsPage = () => {
               </button>
               <button
                 type="button"
-                className="btn-pill-primary flex-1"
+                className="btn-primary flex-1"
                 disabled={!flagReason || (flagReason === 'Other' && !flagCustomReason.trim())}
                 onClick={async () => {
                   try {

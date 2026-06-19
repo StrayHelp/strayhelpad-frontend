@@ -54,7 +54,7 @@ body {
 }
 
 .filter-select {
-  @apply bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none;
+  @apply bg-transparent text-sm font-medium text-[#4b5548] outline-none focus:outline-none;
 }
 
 .table-wrap {
@@ -78,7 +78,7 @@ body {
 }
 
 .badge {
-  @apply inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold;
+  @apply inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold border-0 outline-none;
 }
 
 .badge-active {
@@ -103,11 +103,23 @@ body {
 }
 
 .modal-overlay {
-  @apply fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6;
+  @apply fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6 overflow-y-auto;
 }
 
 .modal-card {
-  @apply w-full rounded-2xl bg-white p-6 shadow-xl;
+  @apply w-full max-w-4xl max-h-[90vh] rounded-2xl bg-white shadow-xl flex flex-col overflow-hidden;
+}
+
+.modal-card > div:first-child {
+  @apply flex-shrink-0 px-6 pt-6;
+}
+
+.modal-scroll-content {
+  @apply flex-1 overflow-y-auto px-6;
+}
+
+.modal-button-sticky {
+  @apply sticky bottom-0 flex-shrink-0 bg-white border-t border-[#e6eadf] px-6 py-4 gap-3 flex items-center;
 }
 
 .form-label {
@@ -132,6 +144,14 @@ body {
 
 .btn-primary:disabled {
   @apply cursor-not-allowed bg-[#c4cabe] text-white;
+}
+
+.btn-danger {
+  @apply rounded-lg bg-[#b83a3a] px-6 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-[#9e2f2f];
+}
+
+.btn-danger:disabled {
+  @apply cursor-not-allowed bg-[#d49090] text-white;
 }
 
 .btn-secondary {

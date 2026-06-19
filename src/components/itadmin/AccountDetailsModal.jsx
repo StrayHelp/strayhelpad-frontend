@@ -22,7 +22,7 @@ export const AccountDetailsModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm overflow-auto p-4">
-      <div className="relative w-full max-w-2xl rounded-2xl border border-white bg-white shadow-xl my-8">
+      <div className="relative w-full max-w-2xl rounded-2xl bg-white shadow-xl my-8">
         <div className="sticky top-0 flex items-center justify-between border-b border-[#e2e6dc] bg-white px-6 py-4 rounded-t-2xl">
           <div>
             <h2 className="text-xl font-semibold text-[#2c3226]">Account Details</h2>
