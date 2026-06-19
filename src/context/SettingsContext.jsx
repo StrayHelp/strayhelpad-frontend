@@ -41,7 +41,6 @@ export const SettingsProvider = ({ children }) => {
       setSettings(data.settings);
       setHasLoaded(true);
     } catch (err) {
-      console.error('Failed to load settings:', err);
       setError(err.message);
       setHasLoaded(true);
     } finally {
@@ -72,7 +71,6 @@ export const SettingsProvider = ({ children }) => {
       
       return response;
     } catch (err) {
-      console.error('Failed to update settings:', err);
       setError(err.message);
       
       // Reload from server on error

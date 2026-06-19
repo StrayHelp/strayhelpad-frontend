@@ -305,7 +305,6 @@ export const SettingsPage = () => {
         confirmAction.resetChanges();
         showSuccess();
       } catch (error) {
-        console.error('Failed to save settings:', error);
         setPasswordError(error?.response?.data?.message || error.message || tl('Failed to update password'));
         setSuccessMessage(`✗ ${tl('Failed to save settings')}`);
         setTimeout(() => setSuccessMessage(''), 3000);
