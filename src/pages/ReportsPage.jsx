@@ -7,6 +7,15 @@ import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
 import { exportToXlsx } from '../utils/exportXlsx';
 
+const getStorageUrl = (path) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = (import.meta.env.VITE_SUPABASE_URL || '')
+    .replace(/\/rest\/v1\/?$/, '')
+    .replace(/\/$/, '');
+  return base ? `${base}/storage/v1/object/public/${path}` : path;
+};
+
 export const ReportsPage = () => {
   const { settings } = useSettingsContext();
   const { t, tl } = useI18n();
@@ -33,6 +42,7 @@ export const ReportsPage = () => {
       setReports(data.map((r) => ({
         id: r.id,
         user: r.reporter_name,
+        userAvatar: getStorageUrl(r.reporter_avatar || ''),
         title: r.description?.slice(0, 40) || '—',
         description: r.description,
         location: r.location || '—',
@@ -194,7 +204,11 @@ export const ReportsPage = () => {
               </span>
               <span className="table-id">{report.id}</span>
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
+                {report.userAvatar ? (
+                  <img src={report.userAvatar} alt={report.user} className="h-9 w-9 rounded-full object-cover bg-[#e6eadf]" />
+                ) : (
+                  <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
+                )}
                 <div>
                   <p className="font-semibold text-[#4b5548]">{report.user}</p>
                   <p className="table-muted">{tl('User')}</p>

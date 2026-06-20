@@ -39,13 +39,19 @@ const toPostStatusClass = (status) => {
   return 'badge badge-active';
 };
 
+const getStorageUrl = (path) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  const base = (import.meta.env.VITE_SUPABASE_URL || '')
+    .replace(/\/rest\/v1\/?$/, '')
+    .replace(/\/$/, '');
+  return base ? `${base}/storage/v1/object/public/${path}` : path;
+};
+
 const resolveImage = (post) => {
-  if (post?.pet_image_url) return post.pet_image_url;
-  if (post?.petImageUrl) return post.petImageUrl;
-  if (post?.image_url) return post.image_url;
-  if (post?.imageUrl) return post.imageUrl;
-  if (Array.isArray(post?.images) && post.images.length > 0) return post.images[0];
-  return '';
+  const raw = post?.pet_image_url || post?.petImageUrl || post?.image_url || post?.imageUrl
+    || (Array.isArray(post?.images) && post.images.length > 0 ? post.images[0] : '');
+  return getStorageUrl(raw);
 };
 
 const normalizePost = (post, settings) => ({
