@@ -81,7 +81,8 @@ body {
   @apply inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-semibold border-0 outline-none;
 }
 
-.badge-active {
+.badge-active,
+.badge-resolved {
   @apply bg-[#e8f3ea] text-[#2f7a43];
 }
 
@@ -90,8 +91,13 @@ body {
   @apply bg-[#fbe9e9] text-[#b83a3a];
 }
 
-.badge-pending {
+.badge-pending,
+.badge-unresolved {
   @apply bg-[#f8efd1] text-[#9a7a1f];
+}
+
+.badge-dismissed {
+  @apply bg-[#eef1e9] text-[#6c7669];
 }
 
 .badge-neutral {

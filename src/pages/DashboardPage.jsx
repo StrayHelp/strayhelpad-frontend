@@ -1,63 +1,96 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { fetchDashboardStats, fetchDashboardMonitoring, fetchDonations, fetchUsers, fetchAdminAuditLogs } from '../services/adminService';
+import {
+  fetchDashboardStats, fetchDashboardMonitoring, fetchDonations, fetchUsers,
+  fetchUnifiedLogs
+} from '../services/adminService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
 
 function formatRelativeTime(timestamp) {
-  if (!timestamp) {
-    return '—';
-  }
-
+  if (!timestamp) return '—';
   const diffMs = Date.now() - new Date(timestamp).getTime();
   const diffMinutes = Math.max(Math.floor(diffMs / 60000), 0);
-
-  if (diffMinutes < 1) {
-    return 'just now';
-  }
-  if (diffMinutes < 60) {
-    return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
-  }
-
+  if (diffMinutes < 1) return 'just now';
+  if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? '' : 's'} ago`;
   const diffHours = Math.floor(diffMinutes / 60);
-  if (diffHours < 24) {
-    return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-  }
-
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
   const diffDays = Math.floor(diffHours / 24);
   return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
 }
+
+function LogPagination({ page, total, perPage, onPrev, onNext, tl }) {
+  if (total <= perPage) return null;
+  const totalPages = Math.ceil(total / perPage);
+  return (
+    <div className="mt-4 flex items-center justify-between border-t border-[#f0f2ec] pt-4 text-sm">
+      <button className="btn-pill-muted" disabled={page === 1} onClick={onPrev}>
+        {tl('Previous')}
+      </button>
+      <span className="text-xs text-[#9aa294]">
+        {tl('Page')} {page} {tl('of')} {totalPages}
+      </span>
+      <button className="btn-pill-muted" disabled={page >= totalPages} onClick={onNext}>
+        {tl('Next')}
+      </button>
+    </div>
+  );
+}
+
+const ACTION_COLORS = {
+  'Account Activated':              'bg-green-50 text-green-700 border-green-200',
+  'Account Registered':             'bg-green-50 text-green-700 border-green-200',
+  'Organization Approved':          'bg-green-50 text-green-700 border-green-200',
+  'Adoption Applicant Approved':    'bg-green-50 text-green-700 border-green-200',
+  'Account Suspended':              'bg-red-50 text-red-700 border-red-200',
+  'Organization Rejected':          'bg-red-50 text-red-700 border-red-200',
+  'Adoption Applicant Rejected':    'bg-red-50 text-red-700 border-red-200',
+  'Report Rejected':                'bg-red-50 text-red-700 border-red-200',
+  'Organization Suspended':         'bg-orange-50 text-orange-700 border-orange-200',
+  'Report Flagged':                 'bg-orange-50 text-orange-700 border-orange-200',
+  'Password Reset':                 'bg-orange-50 text-orange-700 border-orange-200',
+  'Password Changed':               'bg-orange-50 text-orange-700 border-orange-200',
+  'Donation Made':                  'bg-purple-50 text-purple-700 border-purple-200',
+  'Donation Drive Created':         'bg-purple-50 text-purple-700 border-purple-200',
+  'Stray Report Submitted':         'bg-blue-50 text-blue-700 border-blue-200',
+  'Fund Update Posted':             'bg-blue-50 text-blue-700 border-blue-200',
+  'Email Updated':                  'bg-blue-50 text-blue-700 border-blue-200',
+  'Report Reviewed':                'bg-blue-50 text-blue-700 border-blue-200',
+  'Adoption Application Submitted': 'bg-gray-50 text-gray-600 border-gray-200',
+  'Adoption Listing Posted':        'bg-gray-50 text-gray-600 border-gray-200',
+  'Adoption Post Archived':         'bg-gray-50 text-gray-600 border-gray-200',
+};
+
+const DEFAULT_BADGE = 'bg-[#f7f9f3] text-[#6f796b] border-[#e2e7da]';
+const LOG_PER_PAGE = 10;
 
 export const DashboardPage = () => {
   const { settings } = useSettingsContext();
   const { t, tl } = useI18n();
   const [selectedUser, setSelectedUser] = useState(null);
   const [stats, setStats] = useState(null);
-  const [monitoring, setMonitoring] = useState(null);
   const [recentDonations, setRecentDonations] = useState([]);
   const [recentUsers, setRecentUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [auditPage, setAuditPage] = useState(1);
-  const [auditTotal, setAuditTotal] = useState(0);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const AUDIT_PER_PAGE = 10;
+
+  const [unifiedLogs, setUnifiedLogs] = useState([]);
+  const [unifiedPage, setUnifiedPage] = useState(1);
+  const [unifiedTotal, setUnifiedTotal] = useState(0);
+  const [unifiedLoading, setUnifiedLoading] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [statsData, donationsData, usersData, monitoringData] = await Promise.all([
+      const [statsData, donationsData, usersData] = await Promise.all([
         fetchDashboardStats(),
         fetchDonations(),
         fetchUsers(),
         fetchDashboardMonitoring().catch(() => null)
       ]);
-
       setStats(statsData);
-      setMonitoring(monitoringData);
       setRecentDonations(donationsData.slice(0, 4).map(d => ({
         donor: d.donor_name,
         org: d.organization_name || '—',
@@ -70,8 +103,6 @@ export const DashboardPage = () => {
         role: u.role,
         meta: `${u.role} · ${formatDate(u.created_at, settings)}`,
         email: u.email,
-        phone: '—',
-        location: '—',
         joined: formatDate(u.created_at, settings),
         status: u.account_status || 'Active'
       })));
@@ -82,27 +113,23 @@ export const DashboardPage = () => {
     }
   };
 
-  const loadAuditLogs = async (page) => {
-    setAuditLoading(true);
+  const loadUnifiedLogs = async (page) => {
+    setUnifiedLoading(true);
     try {
-      const result = await fetchAdminAuditLogs({ page, limit: AUDIT_PER_PAGE });
-      setAuditLogs(result.logs);
-      setAuditTotal(result.pagination.total);
-    } catch {
-      // silently fail — audit log is supplementary
-    } finally {
-      setAuditLoading(false);
-    }
+      const result = await fetchUnifiedLogs({ page, limit: LOG_PER_PAGE });
+      setUnifiedLogs(result.logs);
+      setUnifiedTotal(result.pagination.total);
+    } catch { /* silently fail */ }
+    finally { setUnifiedLoading(false); }
   };
-
 
   useEffect(() => {
     loadData();
   }, [settings?.system?.defaultLanguage, settings?.system?.timezone]);
 
   useEffect(() => {
-    loadAuditLogs(auditPage);
-  }, [auditPage]);
+    loadUnifiedLogs(unifiedPage);
+  }, [unifiedPage]);
 
   const summaryCards = [
     {
@@ -159,6 +186,7 @@ export const DashboardPage = () => {
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
         )}
 
+        {/* Summary Stats */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {summaryCards.map((stat) => (
             <div key={stat.label} className="card-md">
@@ -175,12 +203,10 @@ export const DashboardPage = () => {
           ))}
         </div>
 
+        {/* Recent Donations + Recent Users */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card-lg">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-[#4b5548]">{tl('Recent Donations')}</h2>
-            </div>
-
+            <h2 className="text-base font-semibold text-[#4b5548]">{tl('Recent Donations')}</h2>
             <div className="table-wrap">
               <div className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center table-head">
                 <span>{tl('Donor')}</span>
@@ -197,9 +223,7 @@ export const DashboardPage = () => {
                 <div key={`${row.donor}-${index}`} className="grid grid-cols-[1.4fr_1.6fr_0.9fr_0.9fr_1fr] items-center table-row-item">
                   <span className="font-semibold text-[#4b5548]">{row.donor}</span>
                   <span>{row.org}</span>
-                  <span className="inline-flex w-fit items-center rounded-full border border-[#e2e6dc] bg-[#fafaf8] px-3 py-1 text-xs font-semibold text-[#6c7669]">
-                    {row.method}
-                  </span>
+                  <span className="inline-flex w-fit items-center rounded-full border border-[#e2e6dc] bg-[#fafaf8] px-3 py-1 text-xs font-semibold text-[#6c7669]">{row.method}</span>
                   <span className="justify-self-end pr-4 font-semibold text-[#4b5548]">{row.amount}</span>
                   <span className="pl-4 text-xs text-[#9aa294]">{row.date}</span>
                 </div>
@@ -208,10 +232,7 @@ export const DashboardPage = () => {
           </div>
 
           <div className="card-lg">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-[#4b5548]">{tl('Recent Users')}</h2>
-            </div>
-
+            <h2 className="text-base font-semibold text-[#4b5548]">{tl('Recent Users')}</h2>
             <div className="mt-4 space-y-4">
               {loading ? (
                 <div className="text-center text-sm text-[#7a8476]">{tl('Loading...')}</div>
@@ -226,116 +247,84 @@ export const DashboardPage = () => {
                       <p className="text-xs text-[#9aa294]">{user.meta}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-[#77806d]">
-                    <button
-                      className="icon-btn"
-                      title={tl('View user')}
-                      onClick={() => setSelectedUser(user)}
-                    >
-                      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-                        <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
-                      </svg>
-                    </button>
-                  </div>
+                  <button className="icon-btn text-[#77806d]" title={tl('View user')} onClick={() => setSelectedUser(user)}>
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                      <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+                    </svg>
+                  </button>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
+        {/* Activity Log — unified chronological feed */}
         <div className="card-lg">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold text-[#4b5548]">{tl('Admin Action Logs')}</h2>
-            <span className="text-xs text-[#9aa294]">
-              {auditTotal > 0 ? `${auditTotal} ${tl('total entries')}` : ''}
-            </span>
+          <div className="mb-1">
+            <h2 className="text-base font-semibold text-[#4b5548]">{tl('Activity Log')}</h2>
+            <p className="mt-0.5 text-xs text-[#7a8476]">{tl('All system activities sorted by most recent.')}</p>
           </div>
 
           <div className="mt-4 overflow-x-auto">
-            <div className="grid grid-cols-[1fr_1.1fr_1.3fr_1.4fr_0.9fr] items-center table-head text-xs">
-              <span>{tl('Admin')}</span>
+            <div className="grid grid-cols-[1.2fr_1.2fr_0.9fr_1.2fr_1.2fr_2fr] items-center table-head text-xs">
+              <span>{tl('Time')}</span>
+              <span>{tl('User / Admin')}</span>
+              <span>{tl('Role')}</span>
               <span>{tl('Action')}</span>
               <span>{tl('Target')}</span>
-              <span>{tl('Reason / Details')}</span>
-              <span>{tl('Date & Time')}</span>
+              <span>{tl('Details / Reason')}</span>
             </div>
 
-            {auditLoading ? (
-              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading...')}</div>
-            ) : auditLogs.length === 0 ? (
-              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No admin actions recorded yet.')}</div>
-            ) : auditLogs.map((log) => {
-              const actionColors = {
-                'Account Suspended': 'bg-red-50 text-red-700 border-red-200',
-                'Account Activated': 'bg-green-50 text-green-700 border-green-200',
-                'Report Flagged': 'bg-orange-50 text-orange-700 border-orange-200',
-                'Report Rejected': 'bg-red-50 text-red-700 border-red-200',
-                'Report Reviewed': 'bg-blue-50 text-blue-700 border-blue-200',
-                'Organization Approved': 'bg-green-50 text-green-700 border-green-200',
-                'Organization Rejected': 'bg-red-50 text-red-700 border-red-200',
-                'Organization Suspended': 'bg-orange-50 text-orange-700 border-orange-200',
-                'Adoption Post Archived': 'bg-gray-50 text-gray-600 border-gray-200',
-                'Email Updated': 'bg-blue-50 text-blue-700 border-blue-200',
-                'Password Changed': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-                'Password Reset': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-              };
-              const roleLabel = {
-                super_admin: 'Super Admin',
-                admin: 'Super Admin',
-                it_admin: 'IT Admin',
-              };
-              const badgeClass = actionColors[log.action] || 'bg-[#f7f9f3] text-[#6f796b] border-[#e2e7da]';
-              const reasonText = log.reason || log.details || '—';
+            {unifiedLoading ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">
+                {tl('Loading...')}
+              </div>
+            ) : unifiedLogs.length === 0 ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-16 text-center text-sm text-[#7a8476]">
+                📄 {tl('No activity logs found.')}
+              </div>
+            ) : unifiedLogs.map((log, i) => {
+              const badgeClass = ACTION_COLORS[log.action] || DEFAULT_BADGE;
               return (
-                <div key={log.id} className="grid grid-cols-[1fr_1.1fr_1.3fr_1.4fr_0.9fr] items-start table-row-item text-sm gap-x-2">
+                <div
+                  key={i}
+                  className="grid grid-cols-[1.2fr_1.2fr_0.9fr_1.2fr_1.2fr_2fr] items-start table-row-item text-sm gap-x-2"
+                >
                   <div>
-                    <p className="font-semibold text-[#4b5548] truncate">{log.performedBy}</p>
-                    <p className="text-xs text-[#9aa294]">{roleLabel[log.performedByRole] || log.performedByRole || 'Admin'}</p>
+                    <p className="text-xs font-medium text-[#4b5548]">{formatRelativeTime(log.occurred_at)}</p>
+                    <p className="text-xs text-[#bcc3b5]">
+                      {log.occurred_at ? new Date(log.occurred_at).toLocaleString() : ''}
+                    </p>
                   </div>
+                  <p className="font-semibold text-[#4b5548] truncate">{log.user_name || '—'}</p>
+                  <p className="text-xs text-[#7a8476]">{log.role || '—'}</p>
                   <div>
                     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${badgeClass}`}>
                       {log.action}
                     </span>
                   </div>
-                  <p className="text-[#4b5548] truncate">{log.account || '—'}</p>
-                  <p className="text-xs text-[#7a8476] line-clamp-2">{reasonText}</p>
-                  <div>
-                    <p className="text-xs text-[#9aa294]">{formatRelativeTime(log.timestamp)}</p>
-                    <p className="text-xs text-[#bcc3b5]">{log.timestamp ? new Date(log.timestamp).toLocaleDateString() : ''}</p>
-                  </div>
+                  <p className="text-xs text-[#4b5548] truncate">{log.target || '—'}</p>
+                  <p className="text-xs text-[#7a8476] line-clamp-2">{log.details || '—'}</p>
                 </div>
               );
             })}
           </div>
 
-          {auditTotal > AUDIT_PER_PAGE && (
-            <div className="mt-4 flex items-center justify-between border-t border-[#f0f2ec] pt-4 text-sm">
-              <button
-                className="btn-pill-muted"
-                disabled={auditPage === 1}
-                onClick={() => setAuditPage(p => p - 1)}
-              >
-                {tl('Previous')}
-              </button>
-              <span className="text-xs text-[#9aa294]">
-                {tl('Page')} {auditPage} {tl('of')} {Math.ceil(auditTotal / AUDIT_PER_PAGE)}
-              </span>
-              <button
-                className="btn-pill-muted"
-                disabled={auditPage >= Math.ceil(auditTotal / AUDIT_PER_PAGE)}
-                onClick={() => setAuditPage(p => p + 1)}
-              >
-                {tl('Next')}
-              </button>
-            </div>
-          )}
+          <LogPagination
+            page={unifiedPage}
+            total={unifiedTotal}
+            perPage={LOG_PER_PAGE}
+            onPrev={() => setUnifiedPage(p => p - 1)}
+            onNext={() => setUnifiedPage(p => p + 1)}
+            tl={tl}
+          />
         </div>
       </div>
 
       {selectedUser && (
         <div className="modal-overlay" onClick={() => setSelectedUser(null)}>
-          <div className="modal-card max-w-lg" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-card max-w-lg" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-[#9aa294]">{tl('User Details')}</p>
@@ -344,7 +333,6 @@ export const DashboardPage = () => {
               </div>
               <span className="badge-neutral">{selectedUser.status}</span>
             </div>
-
             <div className="mt-6 px-6 grid gap-4 text-sm text-[#5a6457]">
               <div className="flex items-center justify-between gap-4">
                 <span className="text-[#9aa294]">{tl('Email')}</span>
@@ -355,7 +343,6 @@ export const DashboardPage = () => {
                 <span className="font-semibold text-[#4b5548]">{selectedUser.joined}</span>
               </div>
             </div>
-
             <div className="mt-6 px-6 pb-6 flex items-center justify-end">
               <button type="button" className="btn-secondary" onClick={() => setSelectedUser(null)}>
                 {tl('Close')}

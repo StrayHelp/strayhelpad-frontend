@@ -85,10 +85,12 @@ export async function fetchTransactionLedger() {
 }
 
 // GET /api/admin/audit-logs
-export async function fetchAdminAuditLogs({ page = 1, limit = 10, search = '', action = '' } = {}) {
+export async function fetchAdminAuditLogs({ page = 1, limit = 10, search = '', action = '', dateFrom = '', dateTo = '' } = {}) {
   const params = { page, limit };
   if (search) params.search = search;
   if (action) params.action = action;
+  if (dateFrom) params.dateFrom = dateFrom;
+  if (dateTo) params.dateTo = dateTo;
   const response = await api.get('/admin/audit-logs', { params });
   return {
     logs: response.data.logs || [],
@@ -100,4 +102,61 @@ export async function fetchAdminAuditLogs({ page = 1, limit = 10, search = '', a
 export async function clearAuditLogs() {
   const response = await api.delete('/admin/audit-logs');
   return response.data;
+}
+
+// GET /api/admin/logs/user-activity
+export async function fetchUserActivityLogs({ page = 1, limit = 10, dateFrom = '', dateTo = '' } = {}) {
+  const params = { page, limit };
+  if (dateFrom) params.dateFrom = dateFrom;
+  if (dateTo) params.dateTo = dateTo;
+  const response = await api.get('/admin/logs/user-activity', { params });
+  return {
+    logs: response.data.logs || [],
+    pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
+  };
+}
+
+// GET /api/admin/logs/org-activity
+export async function fetchOrgActivityLogs({ page = 1, limit = 10, dateFrom = '', dateTo = '' } = {}) {
+  const params = { page, limit };
+  if (dateFrom) params.dateFrom = dateFrom;
+  if (dateTo) params.dateTo = dateTo;
+  const response = await api.get('/admin/logs/org-activity', { params });
+  return {
+    logs: response.data.logs || [],
+    pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
+  };
+}
+
+// GET /api/admin/logs/donations
+export async function fetchDonationLogs({ page = 1, limit = 10, dateFrom = '', dateTo = '' } = {}) {
+  const params = { page, limit };
+  if (dateFrom) params.dateFrom = dateFrom;
+  if (dateTo) params.dateTo = dateTo;
+  const response = await api.get('/admin/logs/donations', { params });
+  return {
+    logs: response.data.logs || [],
+    pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
+  };
+}
+
+// GET /api/admin/logs/reports
+export async function fetchReportActivityLogs({ page = 1, limit = 10, dateFrom = '', dateTo = '' } = {}) {
+  const params = { page, limit };
+  if (dateFrom) params.dateFrom = dateFrom;
+  if (dateTo) params.dateTo = dateTo;
+  const response = await api.get('/admin/logs/reports', { params });
+  return {
+    logs: response.data.logs || [],
+    pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
+  };
+}
+
+// GET /api/admin/logs/unified
+export async function fetchUnifiedLogs({ page = 1, limit = 10 } = {}) {
+  const response = await api.get('/admin/logs/unified', { params: { page, limit } });
+  return {
+    logs: response.data.logs || [],
+    pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
+  };
 }

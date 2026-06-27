@@ -1,11 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
 import { fetchReports } from '../services/adminService';
-import { deleteReport, flagReport } from '../services/reportService';
+import {
+  deleteReport,
+  flagReport,
+  fetchPostReports,
+  flagPostReport,
+  dismissPostReport,
+} from '../services/reportService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
 import { exportToXlsx } from '../utils/exportXlsx';
+
+const STATUS_BADGE = {
+  Resolved:   'badge-resolved',
+  Unresolved: 'badge-unresolved',
+  Flagged:    'badge-flagged',
+};
+
+const POST_REPORT_BADGE = {
+  Pending:   'badge-unresolved',
+  Flagged:   'badge-flagged',
+  Dismissed: 'badge-dismissed',
+};
 
 const getStorageUrl = (path) => {
   if (!path) return '';
@@ -19,6 +37,10 @@ const getStorageUrl = (path) => {
 export const ReportsPage = () => {
   const { settings } = useSettingsContext();
   const { t, tl } = useI18n();
+
+  const [activeTab, setActiveTab] = useState('reports');
+
+  // ── Animal Reports tab state ──────────────────────────────────────
   const [selectedReport, setSelectedReport] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [flagConfirm, setFlagConfirm] = useState(null);
@@ -33,6 +55,16 @@ export const ReportsPage = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  // ── Reported Posts tab state ──────────────────────────────────────
+  const [postReports, setPostReports] = useState([]);
+  const [postReportsLoading, setPostReportsLoading] = useState(false);
+  const [postReportsError, setPostReportsError] = useState(null);
+  const [prFlagConfirm, setPrFlagConfirm] = useState(null);
+  const [prFlagReason, setPrFlagReason] = useState('');
+  const [prFlagCustomReason, setPrFlagCustomReason] = useState('');
+  const [prCurrentPage, setPrCurrentPage] = useState(1);
+  const PR_ITEMS_PER_PAGE = 10;
 
   const load = async () => {
     setLoading(true);
@@ -49,7 +81,7 @@ export const ReportsPage = () => {
         category: tl('Rescue'),
         date: formatDate(r.created_at, settings),
         rawDate: r.report_date || r.created_at,
-        status: r.status || 'Active'
+        status: r.status || 'Unresolved',
       })));
     } catch (err) {
       setError(err.response?.data?.message || err.message || tl('Unable to load reports'));
@@ -58,21 +90,37 @@ export const ReportsPage = () => {
     }
   };
 
+  const loadPostReports = async () => {
+    setPostReportsLoading(true);
+    setPostReportsError(null);
+    try {
+      const data = await fetchPostReports();
+      setPostReports(data);
+    } catch (err) {
+      setPostReportsError(err.response?.data?.message || err.message || tl('Unable to load reported posts'));
+    } finally {
+      setPostReportsLoading(false);
+    }
+  };
+
   useEffect(() => {
     load();
   }, [settings?.system?.defaultLanguage, settings?.system?.timezone]);
 
+  useEffect(() => {
+    if (activeTab === 'post-reports') loadPostReports();
+  }, [activeTab]);
+
   const showActionToast = (message) => {
     setActionToast(message);
-    setTimeout(() => setActionToast(''), 3000);
+    setTimeout(() => setActionToast(''), 3500);
   };
 
   const setReportStatusById = (reportId, status) => {
-    setReports((prev) => prev.map((report) => (
-      report.id === reportId ? { ...report, status } : report
-    )));
+    setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, status } : r)));
   };
 
+  // ── Animal Reports filtering ──────────────────────────────────────
   const now = Date.now();
   const filteredReports = reports.filter(r => {
     const q = search.toLowerCase();
@@ -87,15 +135,16 @@ export const ReportsPage = () => {
     })();
     return matchSearch && matchStatus && matchDate;
   });
-
-  const sortedReports = [...filteredReports].sort((a, b) =>
-    new Date(b.rawDate || 0) - new Date(a.rawDate || 0)
-  );
+  const sortedReports = [...filteredReports].sort((a, b) => new Date(b.rawDate || 0) - new Date(a.rawDate || 0));
   const totalPages = Math.max(1, Math.ceil(sortedReports.length / ITEMS_PER_PAGE));
   const pageReports = sortedReports.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
+  // ── Reported Posts pagination ─────────────────────────────────────
+  const prTotalPages = Math.max(1, Math.ceil(postReports.length / PR_ITEMS_PER_PAGE));
+  const prPageReports = postReports.slice((prCurrentPage - 1) * PR_ITEMS_PER_PAGE, prCurrentPage * PR_ITEMS_PER_PAGE);
+
   return (
-    <Layout title={t('pageReports', 'Reports')} searchValue={search} onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}>
+    <Layout title={t('pageReports', 'Reports')} searchValue={activeTab === 'reports' ? search : ''} onSearchChange={(v) => { setSearch(v); setCurrentPage(1); }}>
       {actionToast && (
         <div className="mb-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
           <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -104,190 +153,276 @@ export const ReportsPage = () => {
           {actionToast}
         </div>
       )}
-      <div className="card-lg">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h2 className="section-title">{t('reportsOverview', 'Reports Overview')}</h2>
-            <p className="section-subtitle">{tl('Total reports')}: {reports.length}</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              className="btn-outline"
-              onClick={() => exportToXlsx(reports, 'reports_export.xlsx', [
-                { label: 'Report ID',   key: 'id' },
-                { label: 'Description', key: row => row.description?.slice(0, 80) || '' },
-                { label: 'Location',    key: 'location' },
-                { label: 'Status',      key: 'status' },
-                { label: 'Reporter',    key: 'user' },
-                { label: 'Date',        key: 'date' },
-              ])}
-            >
-              {tl('Export')}
-            </button>
-          </div>
-        </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <div className="relative w-full max-w-md">
-            <input
-              type="text"
-              placeholder={tl('Search by title, description, or user')}
-              className="input-search"
-              value={search}
-              onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-            />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-                <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" stroke="currentColor" strokeWidth="1.6" />
-                <path d="m20 20-3.4-3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </span>
-          </div>
-          <div className="filter-pill">
-            <span className="filter-label">{tl('Status')}</span>
-            <select
-              className="filter-select"
-              value={statusFilter}
-              onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-            >
-              <option value="">{tl('All')}</option>
-              <option value="Pending">{tl('Pending')}</option>
-              <option value="Active">{tl('Active')}</option>
-              <option value="Ongoing">{tl('Ongoing')}</option>
-              <option value="Rescued">{tl('Rescued')}</option>
-              <option value="Closed">{tl('Closed')}</option>
-              <option value="Flagged">{tl('Flagged')}</option>
-            </select>
-          </div>
-          <div className="filter-pill">
-            <span className="filter-label">{tl('Date')}</span>
-            <select
-              className="filter-select"
-              value={dateFilter}
-              onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
-            >
-              <option value="">{tl('Any time')}</option>
-              <option value="7">{tl('Last 7 days')}</option>
-              <option value="30">{tl('Last 30 days')}</option>
-            </select>
-          </div>
-        </div>
+      {/* ── Tab bar ── */}
+      <div className="mb-6 flex gap-1 rounded-xl border border-[#e2e6dc] bg-[#f5f7f3] p-1 w-fit">
+        <button
+          type="button"
+          className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${activeTab === 'reports' ? 'bg-white shadow text-[#4b5548]' : 'text-[#7a8476] hover:text-[#4b5548]'}`}
+          onClick={() => setActiveTab('reports')}
+        >
+          {tl('Animal Reports')}
+        </button>
+        <button
+          type="button"
+          className={`rounded-lg px-5 py-2 text-sm font-semibold transition ${activeTab === 'post-reports' ? 'bg-white shadow text-[#4b5548]' : 'text-[#7a8476] hover:text-[#4b5548]'}`}
+          onClick={() => setActiveTab('post-reports')}
+        >
+          {tl('Reported Posts')}
+        </button>
+      </div>
 
-        {error && (
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
-
-        <div className="table-wrap">
-          <div className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-head">
-            <span>
-              <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
-            </span>
-            <span>{tl('Report ID')}</span>
-            <span>{tl('User')}</span>
-            <span>{tl('Report')}</span>
-            <span>{tl('Category')}</span>
-            <span>{tl('Date Posted')}</span>
-            <span>{tl('Status')}</span>
-            <span className="text-center">{tl('Actions')}</span>
+      {/* ══════════════════════════════════════════════════════════════
+          ANIMAL REPORTS TAB
+         ══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'reports' && (
+        <div className="card-lg">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="section-title">{t('reportsOverview', 'Reports Overview')}</h2>
+              <p className="section-subtitle">{tl('Total reports')}: {reports.length}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                className="btn-outline"
+                onClick={() => exportToXlsx(reports, 'reports_export.xlsx', [
+                  { label: 'Report ID',   key: 'id' },
+                  { label: 'Description', key: row => row.description?.slice(0, 80) || '' },
+                  { label: 'Location',    key: 'location' },
+                  { label: 'Status',      key: 'status' },
+                  { label: 'Reporter',    key: 'user' },
+                  { label: 'Date',        key: 'date' },
+                ])}
+              >
+                {tl('Export')}
+              </button>
+            </div>
           </div>
-          {loading ? (
-            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading reports…')}</div>
-          ) : filteredReports.length === 0 ? (
-            <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No reports found.')}</div>
-          ) : pageReports.map((report, index) => (
-            <div
-              key={`${report.id}-${index}`}
-              className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-row-item"
-            >
-              <span>
-                <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <div className="relative w-full max-w-md">
+              <input
+                type="text"
+                placeholder={tl('Search by title, description, or user')}
+                className="input-search"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#9aa294]">
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                  <path d="M11 18a7 7 0 1 1 0-14 7 7 0 0 1 0 14Z" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="m20 20-3.4-3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
               </span>
-              <span className="table-id">{report.id}</span>
-              <div className="flex items-center gap-3">
-                {report.userAvatar ? (
-                  <img src={report.userAvatar} alt={report.user} className="h-9 w-9 rounded-full object-cover bg-[#e6eadf]" />
-                ) : (
-                  <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
-                )}
-                <div>
-                  <p className="font-semibold text-[#4b5548]">{report.user}</p>
-                  <p className="table-muted">{tl('User')}</p>
+            </div>
+            <div className="filter-pill">
+              <span className="filter-label">{tl('Status')}</span>
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              >
+                <option value="">{tl('All')}</option>
+                <option value="Unresolved">{tl('Unresolved')}</option>
+                <option value="Resolved">{tl('Resolved')}</option>
+                <option value="Flagged">{tl('Flagged')}</option>
+              </select>
+            </div>
+            <div className="filter-pill">
+              <span className="filter-label">{tl('Date')}</span>
+              <select
+                className="filter-select"
+                value={dateFilter}
+                onChange={e => { setDateFilter(e.target.value); setCurrentPage(1); }}
+              >
+                <option value="">{tl('Any time')}</option>
+                <option value="7">{tl('Last 7 days')}</option>
+                <option value="30">{tl('Last 30 days')}</option>
+              </select>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          )}
+
+          <div className="table-wrap">
+            <div className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-head">
+              <span><input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" /></span>
+              <span>{tl('Report ID')}</span>
+              <span>{tl('User')}</span>
+              <span>{tl('Report')}</span>
+              <span>{tl('Category')}</span>
+              <span>{tl('Date Posted')}</span>
+              <span>{tl('Status')}</span>
+              <span className="text-center">{tl('Actions')}</span>
+            </div>
+            {loading ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading reports…')}</div>
+            ) : filteredReports.length === 0 ? (
+              <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No reports found.')}</div>
+            ) : pageReports.map((report, index) => (
+              <div
+                key={`${report.id}-${index}`}
+                className="grid grid-cols-[0.5fr_1fr_1.4fr_2.4fr_1.1fr_1.1fr_1fr_7rem] items-center gap-2 table-row-item"
+              >
+                <span><input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" /></span>
+                <span className="table-id">{report.id}</span>
+                <div className="flex items-center gap-3">
+                  {report.userAvatar ? (
+                    <img src={report.userAvatar} alt={report.user} className="h-9 w-9 rounded-full object-cover bg-[#e6eadf]" />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-[#e6eadf]" />
+                  )}
+                  <div>
+                    <p className="font-semibold text-[#4b5548]">{report.user}</p>
+                    <p className="table-muted">{tl('User')}</p>
+                  </div>
+                </div>
+                <button type="button" className="text-left" onClick={() => setSelectedReport(report)}>
+                  <p className="font-semibold text-[#4b5548]">{report.title}</p>
+                  <p className="text-xs text-[#9aa294] line-clamp-1">{report.description}</p>
+                </button>
+                <span className="text-sm text-[#7a8476]">{report.category}</span>
+                <span className="table-muted">{report.date}</span>
+                <span className={`badge ${STATUS_BADGE[report.status] ?? 'badge-unresolved'}`}>
+                  {tl(report.status)}
+                </span>
+                <div className="flex items-center justify-center gap-2 text-[#77806d]">
+                  <button className="icon-btn" title={tl('View report')} onClick={() => setSelectedReport(report)}>
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                      <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+                    </svg>
+                  </button>
+                  <button className="icon-btn text-[#a25d5d]" title={tl('Archive report')} onClick={() => setDeleteConfirm(report)}>
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                      <path d="M4 7h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path d="M10 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path d="M14 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                      <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                  </button>
                 </div>
               </div>
-              <button
-                type="button"
-                className="text-left"
-                onClick={() => setSelectedReport(report)}
-              >
-                <p className="font-semibold text-[#4b5548]">{report.title}</p>
-                <p className="text-xs text-[#9aa294] line-clamp-1">{report.description}</p>
-              </button>
-              <span className="text-sm text-[#7a8476]">{report.category}</span>
-              <span className="table-muted">{report.date}</span>
-              <span
-                className={`badge ${report.status === 'Active' ? 'badge-active' : 'badge-flagged'}`}
-              >
-                {tl(report.status)}
-              </span>
-              <div className="flex items-center justify-center gap-2 text-[#77806d]">
-                <button
-                  className="icon-btn"
-                  title={tl('View report')}
-                  onClick={() => setSelectedReport(report)}
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-                    <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
-                  </svg>
-                </button>
-                <button
-                  className="icon-btn text-[#a25d5d]"
-                  title={tl('Archive report')}
-                  onClick={() => setDeleteConfirm(report)}
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
-                    <path d="M4 7h16" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M10 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M14 11v6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                    <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
-          <span>{tl('Showing')} {pageReports.length} {tl('of')} {filteredReports.length} {tl('reports')} &bull; {tl('Page')} {currentPage} {tl('of')} {totalPages}</span>
-          <div className="flex items-center gap-2">
-            <button
-              className="btn-page"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-            >
-              {tl('Prev')}
-            </button>
-            <button className="btn-page-active">{currentPage}</button>
-            <button
-              className="btn-page"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(p => p + 1)}
-            >
-              {tl('Next')}
-            </button>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
+            <span>{tl('Showing')} {pageReports.length} {tl('of')} {filteredReports.length} {tl('reports')} &bull; {tl('Page')} {currentPage} {tl('of')} {totalPages}</span>
+            <div className="flex items-center gap-2">
+              <button className="btn-page" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>{tl('Prev')}</button>
+              <button className="btn-page-active">{currentPage}</button>
+              <button className="btn-page" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>{tl('Next')}</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          REPORTED POSTS TAB
+         ══════════════════════════════════════════════════════════════ */}
+      {activeTab === 'post-reports' && (
+        <div className="card-lg">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h2 className="section-title">{tl('Reported Posts')}</h2>
+              <p className="section-subtitle">{tl('User-submitted complaints about suspicious posts')}: {postReports.length}</p>
+            </div>
+          </div>
+
+          {postReportsError && (
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{postReportsError}</div>
+          )}
+
+          {postReportsLoading ? (
+            <div className="mt-8 py-10 text-center text-sm text-[#7a8476]">{tl('Loading reported posts…')}</div>
+          ) : postReports.length === 0 ? (
+            <div className="mt-8 py-10 text-center text-sm text-[#7a8476]">{tl('No reported posts.')}</div>
+          ) : (
+            <>
+              <div className="mt-6 grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+                {prPageReports.map((pr) => {
+                  const imgSrc = getStorageUrl(
+                    (Array.isArray(pr.post_images) && pr.post_images[0]) || pr.post_image || ''
+                  );
+                  return (
+                    <div key={pr.id} className="flex gap-4 rounded-2xl border border-[#e2e6dc] bg-[#fafaf8] p-4">
+                      {imgSrc ? (
+                        <img src={imgSrc} alt="post" className="h-24 w-24 flex-shrink-0 rounded-xl object-cover bg-[#e6eadf]" />
+                      ) : (
+                        <div className="h-24 w-24 flex-shrink-0 rounded-xl bg-[#e6eadf]" />
+                      )}
+                      <div className="flex flex-1 flex-col gap-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="font-semibold text-[#4b5548] line-clamp-1">
+                            {pr.post_description?.slice(0, 40) || '—'}
+                          </p>
+                          <span className={`badge flex-shrink-0 ${POST_REPORT_BADGE[pr.review_status] ?? 'badge-unresolved'}`}>
+                            {tl(pr.review_status)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#7a8476] line-clamp-2">{pr.post_description}</p>
+                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#9aa294]">
+                          {pr.animal_type && <span>{tl('Animal')}: <strong className="text-[#4b5548]">{pr.animal_type}</strong></span>}
+                          <span>{tl('Location')}: <strong className="text-[#4b5548]">{pr.post_location || '—'}</strong></span>
+                          <span>{tl('Posted')}: <strong className="text-[#4b5548]">{pr.post_date ? new Date(pr.post_date).toLocaleDateString() : '—'}</strong></span>
+                        </div>
+                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#9aa294]">
+                          <span>{tl('Reported by')}: <strong className="text-[#4b5548]">{pr.reporter_name}</strong></span>
+                          <span>{tl('Reason')}: <strong className="text-[#4b5548]">{pr.reason}</strong></span>
+                          <span>{tl('Reported on')}: <strong className="text-[#4b5548]">{pr.reported_at ? new Date(pr.reported_at).toLocaleDateString() : '—'}</strong></span>
+                        </div>
+                        {pr.review_status === 'Pending' && (
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              type="button"
+                              className="btn-danger text-xs px-3 py-1"
+                              onClick={() => { setPrFlagConfirm(pr); setPrFlagReason(''); setPrFlagCustomReason(''); }}
+                            >
+                              {tl('Flag Post')}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-secondary text-xs px-3 py-1"
+                              onClick={async () => {
+                                try {
+                                  await dismissPostReport(pr.id);
+                                  showActionToast(`✓ ${tl('Post report dismissed')}`);
+                                  await loadPostReports();
+                                } catch (err) {
+                                  setPostReportsError(err.response?.data?.message || err.message || tl('Unable to dismiss'));
+                                }
+                              }}
+                            >
+                              {tl('Dismiss')}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
+                <span>{tl('Showing')} {prPageReports.length} {tl('of')} {postReports.length} {tl('reports')} &bull; {tl('Page')} {prCurrentPage} {tl('of')} {prTotalPages}</span>
+                <div className="flex items-center gap-2">
+                  <button className="btn-page" disabled={prCurrentPage === 1} onClick={() => setPrCurrentPage(p => p - 1)}>{tl('Prev')}</button>
+                  <button className="btn-page-active">{prCurrentPage}</button>
+                  <button className="btn-page" disabled={prCurrentPage === prTotalPages} onClick={() => setPrCurrentPage(p => p + 1)}>{tl('Next')}</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Report Detail Modal ── */}
       {selectedReport && (
-        <div
-          className="modal-overlay"
-          onClick={() => setSelectedReport(null)}
-        >
-          <div
-            className="modal-card max-w-xl"
-            onClick={(event) => event.stopPropagation()}
-          >
+        <div className="modal-overlay" onClick={() => setSelectedReport(null)}>
+          <div className="modal-card max-w-xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold text-[#9aa294]">{tl('Report Details')}</p>
@@ -295,11 +430,9 @@ export const ReportsPage = () => {
                 <p className="text-sm text-[#7a8476]">{tl('Reported by')} {selectedReport.user}</p>
               </div>
             </div>
-
             <div className="mt-5 px-6 rounded-2xl border border-[#eef1e9] bg-[#fafaf8] p-4 text-sm text-[#5a6457]">
               {selectedReport.description}
             </div>
-
             <div className="mt-6 px-6 space-y-4 text-sm">
               <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
                 <span className="text-[#9aa294] whitespace-nowrap">{tl('Report ID')}:</span>
@@ -315,38 +448,30 @@ export const ReportsPage = () => {
               </div>
               <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
                 <span className="text-[#9aa294] whitespace-nowrap">{tl('Status')}:</span>
-                <span
-                  className={`badge ${selectedReport.status === 'Active' ? 'badge-active' : 'badge-flagged'}`}
-                >
+                <span className={`badge ${STATUS_BADGE[selectedReport.status] ?? 'badge-unresolved'}`}>
                   {tl(selectedReport.status)}
                 </span>
               </div>
             </div>
-
             <div className="mt-6 px-6 pb-6 flex items-center justify-end gap-3">
               {selectedReport.status !== 'Flagged' && (
                 <button
                   type="button"
                   className="btn-danger"
-                  onClick={() => {
-                    setFlagConfirm(selectedReport);
-                    setSelectedReport(null);
-                  }}
+                  onClick={() => { setFlagConfirm(selectedReport); setSelectedReport(null); }}
                 >
                   {tl('Flag Report')}
                 </button>
               )}
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setSelectedReport(null)}
-              >
+              <button type="button" className="btn-secondary" onClick={() => setSelectedReport(null)}>
                 {tl('Close')}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ── Archive Confirm Modal ── */}
       {deleteConfirm && (
         <div className="modal-overlay">
           <div className="modal-card max-w-md">
@@ -363,19 +488,11 @@ export const ReportsPage = () => {
                 <p className="text-sm text-[#9aa294]">The report will be moved to the Archive page. You can restore it at any time from Settings → Archive.</p>
               </div>
             </div>
-
             <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('Report:')}</span> {deleteConfirm.title} ({deleteConfirm.id})
             </div>
-
             <div className="mt-6 px-6 pb-6 flex gap-3">
-              <button
-                type="button"
-                className="btn-secondary flex-1"
-                onClick={() => setDeleteConfirm(null)}
-              >
-                {tl('Cancel')}
-              </button>
+              <button type="button" className="btn-secondary flex-1" onClick={() => setDeleteConfirm(null)}>{tl('Cancel')}</button>
               <button
                 type="button"
                 className="btn-danger flex-1"
@@ -396,6 +513,8 @@ export const ReportsPage = () => {
           </div>
         </div>
       )}
+
+      {/* ── Flag Report Modal (Animal Reports tab) ── */}
       {flagConfirm && (
         <div className="modal-overlay">
           <div className="modal-card max-w-md">
@@ -411,11 +530,9 @@ export const ReportsPage = () => {
                 <p className="text-sm text-[#9aa294]">{tl('Select a reason for flagging this report.')}</p>
               </div>
             </div>
-
             <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
               <span className="font-semibold text-[#4b5548]">{tl('Report:')}</span> {flagConfirm.title} ({flagConfirm.id})
             </div>
-
             <div className="mt-4 px-6">
               <p className="mb-2 text-sm font-semibold text-[#4b5548]">{tl('Reason')} <span className="text-red-500">*</span></p>
               <div className="flex flex-wrap gap-2">
@@ -423,11 +540,7 @@ export const ReportsPage = () => {
                   <button
                     key={r}
                     type="button"
-                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition outline-none focus:outline-none ${
-                      flagReason === r
-                        ? 'border-[#9a7a1f] bg-[#9a7a1f] text-white'
-                        : 'border-[#e2e6dc] bg-white text-[#6c7669] hover:bg-[#f5f7f3]'
-                    }`}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition outline-none focus:outline-none ${flagReason === r ? 'border-[#9a7a1f] bg-[#9a7a1f] text-white' : 'border-[#e2e6dc] bg-white text-[#6c7669] hover:bg-[#f5f7f3]'}`}
                     onClick={() => { setFlagReason(r); if (r !== 'Other') setFlagCustomReason(''); }}
                   >
                     {tl(r)}
@@ -444,7 +557,6 @@ export const ReportsPage = () => {
                 />
               )}
             </div>
-
             <div className="mt-6 px-6 pb-6 flex gap-3">
               <button
                 type="button"
@@ -460,14 +572,91 @@ export const ReportsPage = () => {
                 onClick={async () => {
                   try {
                     const reason = flagReason === 'Other' ? flagCustomReason.trim() : flagReason;
-                    await flagReport(flagConfirm.id, reason);
+                    const result = await flagReport(flagConfirm.id, reason);
                     setReportStatusById(flagConfirm.id, 'Flagged');
-                    showActionToast(`✓ ${tl('Report flagged')}`);
+                    const refId = result?.report?.flag_reference_id || '';
+                    showActionToast(`✓ ${tl('Report flagged')}${refId ? ` — Ref: ${refId}` : ''}`);
                     setFlagConfirm(null);
                     setFlagReason('');
                     setFlagCustomReason('');
                   } catch (err) {
                     setError(err.response?.data?.message || err.message || tl('Unable to flag report'));
+                  }
+                }}
+              >
+                {tl('Confirm Flag')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Flag Post Modal (Reported Posts tab) ── */}
+      {prFlagConfirm && (
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fbe9e9] text-[#b83a3a]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M4 15V4l8 3 8-3v11l-8 3-8-3Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M12 7v14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Flag this post?')}</h3>
+                <p className="text-sm text-[#9aa294]">{tl('The original post will be marked Flagged and a notification will be sent to the creator.')}</p>
+              </div>
+            </div>
+            <div className="mt-4 px-6 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">{tl('Reported reason')}:</span> {prFlagConfirm.reason}
+            </div>
+            <div className="mt-4 px-6">
+              <p className="mb-2 text-sm font-semibold text-[#4b5548]">{tl('Flag reason')} <span className="text-red-500">*</span></p>
+              <div className="flex flex-wrap gap-2">
+                {['Spam', 'Inappropriate Content', 'Misleading Information', 'Other'].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition outline-none focus:outline-none ${prFlagReason === r ? 'border-[#b83a3a] bg-[#b83a3a] text-white' : 'border-[#e2e6dc] bg-white text-[#6c7669] hover:bg-[#f5f7f3]'}`}
+                    onClick={() => { setPrFlagReason(r); if (r !== 'Other') setPrFlagCustomReason(''); }}
+                  >
+                    {tl(r)}
+                  </button>
+                ))}
+              </div>
+              {prFlagReason === 'Other' && (
+                <textarea
+                  className="mt-3 w-full rounded-xl border border-[#e2e6dc] px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                  rows={3}
+                  placeholder={tl('Enter custom reason…')}
+                  value={prFlagCustomReason}
+                  onChange={e => setPrFlagCustomReason(e.target.value)}
+                />
+              )}
+            </div>
+            <div className="mt-6 px-6 pb-6 flex gap-3">
+              <button
+                type="button"
+                className="btn-secondary flex-1"
+                onClick={() => { setPrFlagConfirm(null); setPrFlagReason(''); setPrFlagCustomReason(''); }}
+              >
+                {tl('Cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn-danger flex-1"
+                disabled={!prFlagReason || (prFlagReason === 'Other' && !prFlagCustomReason.trim())}
+                onClick={async () => {
+                  try {
+                    const reason = prFlagReason === 'Other' ? prFlagCustomReason.trim() : prFlagReason;
+                    const result = await flagPostReport(prFlagConfirm.id, reason);
+                    showActionToast(`✓ ${tl('Post flagged')}${result?.flagReferenceId ? ` — Ref: ${result.flagReferenceId}` : ''}`);
+                    setPrFlagConfirm(null);
+                    setPrFlagReason('');
+                    setPrFlagCustomReason('');
+                    await loadPostReports();
+                  } catch (err) {
+                    setPostReportsError(err.response?.data?.message || err.message || tl('Unable to flag post'));
                   }
                 }}
               >

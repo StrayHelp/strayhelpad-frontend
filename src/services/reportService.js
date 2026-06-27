@@ -50,3 +50,21 @@ export async function flagReport(id, reason) {
   const response = await api.put(`/reports/${id}/flag`, { reason });
   return response.data;
 }
+
+// GET /api/reports/post-reports (admin only)
+export async function fetchPostReports() {
+  const response = await api.get('/reports/post-reports');
+  return response.data.postReports;
+}
+
+// PUT /api/reports/post-reports/:id/flag (admin only)
+export async function flagPostReport(id, reason) {
+  const response = await api.put(`/reports/post-reports/${id}/flag`, { reason });
+  return response.data;
+}
+
+// PUT /api/reports/post-reports/:id/dismiss (admin only)
+export async function dismissPostReport(id) {
+  const response = await api.put(`/reports/post-reports/${id}/dismiss`);
+  return response.data;
+}
