@@ -119,7 +119,7 @@ export const UsersPage = () => {
           <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
             <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Status')}</span>
             <select
-              className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none"
+              className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none border-0 appearance-none"
               value={statusFilter}
               onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
             >

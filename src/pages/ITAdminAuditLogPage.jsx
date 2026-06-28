@@ -108,7 +108,7 @@ export const ITAdminAuditLogPage = () => {
           <select
             value={actionFilter}
             onChange={(e) => setActionFilter(e.target.value)}
-            className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm focus:outline-none"
+            className="rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm focus:outline-none appearance-none"
           >
             <option value="">{tl('All Actions')}</option>
             <option value="Account Suspended">{tl('Account Suspended')}</option>

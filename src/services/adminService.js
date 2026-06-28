@@ -160,3 +160,28 @@ export async function fetchUnifiedLogs({ page = 1, limit = 10 } = {}) {
     pagination: response.data.pagination || { page: 1, limit: 10, total: 0 }
   };
 }
+
+// GET /api/admin/payouts?status=...
+export async function fetchPayouts(status = '') {
+  const params = status ? { status } : {};
+  const response = await api.get('/admin/payouts', { params });
+  return response.data.payouts;
+}
+
+// PUT /api/admin/payouts/:id/approve
+export async function approvePayout(id) {
+  const response = await api.put(`/admin/payouts/${encodeURIComponent(id)}/approve`);
+  return response.data;
+}
+
+// PUT /api/admin/payouts/:id/reject
+export async function rejectPayout(id, reason) {
+  const response = await api.put(`/admin/payouts/${encodeURIComponent(id)}/reject`, { reason });
+  return response.data;
+}
+
+// PUT /api/admin/payouts/:id/release
+export async function releasePayout(id) {
+  const response = await api.put(`/admin/payouts/${encodeURIComponent(id)}/release`);
+  return response.data;
+}

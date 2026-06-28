@@ -64,6 +64,7 @@ export const ReportsPage = () => {
   const [prFlagReason, setPrFlagReason] = useState('');
   const [prFlagCustomReason, setPrFlagCustomReason] = useState('');
   const [prCurrentPage, setPrCurrentPage] = useState(1);
+  const [selectedPostReport, setSelectedPostReport] = useState(null);
   const PR_ITEMS_PER_PAGE = 10;
 
   const load = async () => {
@@ -342,68 +343,89 @@ export const ReportsPage = () => {
             <div className="mt-8 py-10 text-center text-sm text-[#7a8476]">{tl('No reported posts.')}</div>
           ) : (
             <>
-              <div className="mt-6 grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-                {prPageReports.map((pr) => {
-                  const imgSrc = getStorageUrl(
-                    (Array.isArray(pr.post_images) && pr.post_images[0]) || pr.post_image || ''
-                  );
-                  return (
-                    <div key={pr.id} className="flex gap-4 rounded-2xl border border-[#e2e6dc] bg-[#fafaf8] p-4">
-                      {imgSrc ? (
-                        <img src={imgSrc} alt="post" className="h-24 w-24 flex-shrink-0 rounded-xl object-cover bg-[#e6eadf]" />
-                      ) : (
-                        <div className="h-24 w-24 flex-shrink-0 rounded-xl bg-[#e6eadf]" />
-                      )}
-                      <div className="flex flex-1 flex-col gap-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold text-[#4b5548] line-clamp-1">
-                            {pr.post_description?.slice(0, 40) || '—'}
-                          </p>
-                          <span className={`badge flex-shrink-0 ${POST_REPORT_BADGE[pr.review_status] ?? 'badge-unresolved'}`}>
-                            {tl(pr.review_status)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#7a8476] line-clamp-2">{pr.post_description}</p>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#9aa294]">
-                          {pr.animal_type && <span>{tl('Animal')}: <strong className="text-[#4b5548]">{pr.animal_type}</strong></span>}
-                          <span>{tl('Location')}: <strong className="text-[#4b5548]">{pr.post_location || '—'}</strong></span>
-                          <span>{tl('Posted')}: <strong className="text-[#4b5548]">{pr.post_date ? new Date(pr.post_date).toLocaleDateString() : '—'}</strong></span>
-                        </div>
-                        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#9aa294]">
-                          <span>{tl('Reported by')}: <strong className="text-[#4b5548]">{pr.reporter_name}</strong></span>
-                          <span>{tl('Reason')}: <strong className="text-[#4b5548]">{pr.reason}</strong></span>
-                          <span>{tl('Reported on')}: <strong className="text-[#4b5548]">{pr.reported_at ? new Date(pr.reported_at).toLocaleDateString() : '—'}</strong></span>
-                        </div>
-                        {pr.review_status === 'Pending' && (
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              type="button"
-                              className="btn-danger text-xs px-3 py-1"
-                              onClick={() => { setPrFlagConfirm(pr); setPrFlagReason(''); setPrFlagCustomReason(''); }}
-                            >
-                              {tl('Flag Post')}
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-secondary text-xs px-3 py-1"
-                              onClick={async () => {
-                                try {
-                                  await dismissPostReport(pr.id);
-                                  showActionToast(`✓ ${tl('Post report dismissed')}`);
-                                  await loadPostReports();
-                                } catch (err) {
-                                  setPostReportsError(err.response?.data?.message || err.message || tl('Unable to dismiss'));
-                                }
-                              }}
-                            >
-                              {tl('Dismiss')}
-                            </button>
-                          </div>
-                        )}
+              <div className="table-wrap">
+                <div className="grid grid-cols-[0.5fr_1fr_1.5fr_2.4fr_1.2fr_1.1fr_1fr_7rem] items-center gap-2 table-head">
+                  <span><input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" /></span>
+                  <span>{tl('ID')}</span>
+                  <span>{tl('Reporter')}</span>
+                  <span>{tl('Post')}</span>
+                  <span>{tl('Reason')}</span>
+                  <span>{tl('Date Posted')}</span>
+                  <span>{tl('Status')}</span>
+                  <span className="text-center">{tl('Actions')}</span>
+                </div>
+                {prPageReports.map((pr) => (
+                  <div
+                    key={pr.id}
+                    className="grid grid-cols-[0.5fr_1fr_1.5fr_2.4fr_1.2fr_1.1fr_1fr_7rem] items-center gap-2 table-row-item cursor-pointer"
+                    onClick={() => setSelectedPostReport(pr)}
+                  >
+                    <span onClick={e => e.stopPropagation()}>
+                      <input type="checkbox" className="h-4 w-4 rounded border-[#d9dfd3]" />
+                    </span>
+                    <span className="table-id">{pr.id}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-8 w-8 flex-shrink-0 rounded-full bg-[#e6eadf]" />
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[#4b5548] truncate">{pr.reporter_name}</p>
+                        <p className="table-muted capitalize">{pr.reporter_role || tl('User')}</p>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[#4b5548] truncate">{pr.post_description?.slice(0, 40) || '—'}</p>
+                      <p className="text-xs text-[#9aa294] line-clamp-1">{pr.post_description}</p>
+                    </div>
+                    <span className="text-sm text-[#7a8476] truncate">{pr.reason}</span>
+                    <span className="table-muted">{pr.post_date ? new Date(pr.post_date).toLocaleDateString() : '—'}</span>
+                    <span className={`badge ${POST_REPORT_BADGE[pr.review_status] ?? 'badge-unresolved'}`}>
+                      {tl(pr.review_status)}
+                    </span>
+                    <div className="flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                      <button
+                        className="icon-btn"
+                        title={tl('View details')}
+                        onClick={() => setSelectedPostReport(pr)}
+                      >
+                        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                          <path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                          <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.6" />
+                        </svg>
+                      </button>
+                      {pr.review_status === 'Pending' && (
+                        <>
+                          <button
+                            className="icon-btn text-[#a25d5d]"
+                            title={tl('Flag post')}
+                            onClick={() => { setPrFlagConfirm(pr); setPrFlagReason(''); setPrFlagCustomReason(''); }}
+                          >
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                              <path d="M4 15V4l8 3 8-3v11l-8 3-8-3Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                              <path d="M12 7v14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                          <button
+                            className="icon-btn text-[#7a8476]"
+                            title={tl('Dismiss')}
+                            onClick={async () => {
+                              try {
+                                await dismissPostReport(pr.id);
+                                showActionToast(`✓ ${tl('Post report dismissed')}`);
+                                await loadPostReports();
+                              } catch (err) {
+                                setPostReportsError(err.response?.data?.message || err.message || tl('Unable to dismiss'));
+                              }
+                            }}
+                          >
+                            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+                              <path d="M18 6 6 18" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                              <path d="M6 6l12 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                            </svg>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
@@ -585,6 +607,132 @@ export const ReportsPage = () => {
                 }}
               >
                 {tl('Confirm Flag')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Post Report Detail Modal ── */}
+      {selectedPostReport && (
+        <div className="modal-overlay" onClick={() => setSelectedPostReport(null)}>
+          <div className="modal-card max-w-2xl" onClick={e => e.stopPropagation()}>
+            <div className="modal-scroll-content">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-[#9aa294]">{tl('Reported Post Details')}</p>
+                  <h3 className="mt-1 text-xl font-semibold text-[#4b5548]">
+                    {selectedPostReport.post_description?.split(/\s+/).slice(0, 10).join(' ') || '—'}
+                  </h3>
+                  <p className="text-sm text-[#7a8476]">{tl('Reported by')} {selectedPostReport.reporter_name}</p>
+                </div>
+                <span className={`badge flex-shrink-0 ${POST_REPORT_BADGE[selectedPostReport.review_status] ?? 'badge-unresolved'}`}>
+                  {tl(selectedPostReport.review_status)}
+                </span>
+              </div>
+
+              {/* Post image */}
+              {(() => {
+                const imgSrc = getStorageUrl(
+                  (Array.isArray(selectedPostReport.post_images) && selectedPostReport.post_images[0]) ||
+                  selectedPostReport.post_image || ''
+                );
+                return imgSrc ? (
+                  <img src={imgSrc} alt="post" className="mt-5 w-full h-36 rounded-2xl object-cover bg-[#e6eadf]" />
+                ) : (
+                  <div className="mt-5 w-full h-36 rounded-2xl bg-[#e6eadf] flex items-center justify-center text-sm text-[#9aa294]">
+                    {tl('No image')}
+                  </div>
+                );
+              })()}
+
+              {/* Full description */}
+              <div className="mt-5 rounded-2xl border border-[#eef1e9] bg-[#fafaf8] p-4 text-sm text-[#5a6457]">
+                {selectedPostReport.post_description || '—'}
+              </div>
+
+              {/* Details grid */}
+              <div className="mt-5 space-y-3 text-sm">
+                <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                  <span className="text-[#9aa294] whitespace-nowrap">{tl('Location')}:</span>
+                  <span className="font-semibold text-[#4b5548]">{selectedPostReport.post_location || '—'}</span>
+                </div>
+                {selectedPostReport.animal_type && (
+                  <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                    <span className="text-[#9aa294] whitespace-nowrap">{tl('Animal Type')}:</span>
+                    <span className="font-semibold text-[#4b5548]">{selectedPostReport.animal_type}</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                  <span className="text-[#9aa294] whitespace-nowrap">{tl('Date Posted')}:</span>
+                  <span className="font-semibold text-[#4b5548]">
+                    {selectedPostReport.post_date ? new Date(selectedPostReport.post_date).toLocaleDateString() : '—'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                  <span className="text-[#9aa294] whitespace-nowrap">{tl('Reported By')}:</span>
+                  <span className="font-semibold text-[#4b5548]">
+                    {selectedPostReport.reporter_name}
+                    <span className="ml-2 text-xs font-normal text-[#9aa294] capitalize">({selectedPostReport.reporter_role || tl('user')})</span>
+                  </span>
+                </div>
+                <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                  <span className="text-[#9aa294] whitespace-nowrap">{tl('Reason')}:</span>
+                  <span className="font-semibold text-[#4b5548]">{selectedPostReport.reason}</span>
+                </div>
+                {selectedPostReport.additional_notes && (
+                  <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                    <span className="text-[#9aa294] whitespace-nowrap">{tl('Additional Notes')}:</span>
+                    <span className="font-semibold text-[#4b5548]">{selectedPostReport.additional_notes}</span>
+                  </div>
+                )}
+                <div className="grid grid-cols-[auto_1fr] gap-3 items-start">
+                  <span className="text-[#9aa294] whitespace-nowrap">{tl('Date Reported')}:</span>
+                  <span className="font-semibold text-[#4b5548]">
+                    {selectedPostReport.reported_at ? new Date(selectedPostReport.reported_at).toLocaleString() : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="modal-button-sticky flex items-center justify-end gap-3">
+              {selectedPostReport.review_status === 'Pending' && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => {
+                      const pr = selectedPostReport;
+                      setSelectedPostReport(null);
+                      setPrFlagConfirm(pr);
+                      setPrFlagReason('');
+                      setPrFlagCustomReason('');
+                    }}
+                  >
+                    {tl('Flag Post')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={async () => {
+                      try {
+                        await dismissPostReport(selectedPostReport.id);
+                        setSelectedPostReport(null);
+                        showActionToast(`✓ ${tl('Post report dismissed')}`);
+                        await loadPostReports();
+                      } catch (err) {
+                        setPostReportsError(err.response?.data?.message || err.message || tl('Unable to dismiss'));
+                      }
+                    }}
+                  >
+                    {tl('Dismiss')}
+                  </button>
+                </>
+              )}
+              <button type="button" className="btn-secondary" onClick={() => setSelectedPostReport(null)}>
+                {tl('Close')}
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Layout } from '../components/Layout';
-import { fetchDonations, fetchTransactionLedger } from '../services/adminService';
+import { fetchDonations, fetchTransactionLedger, fetchPayouts, approvePayout, rejectPayout, releasePayout } from '../services/adminService';
 import { useSettingsContext } from '../context/SettingsContext';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useI18n } from '../hooks/useI18n';
@@ -21,6 +21,16 @@ export const DonationsPage = () => {
   const [donPage, setDonPage] = useState(1);
   const [ledgerPage, setLedgerPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
+
+  // ── Payout Management tab state ───────────────────────────────────
+  const [payouts, setPayouts] = useState([]);
+  const [payoutsLoading, setPayoutsLoading] = useState(false);
+  const [payoutsError, setPayoutsError] = useState(null);
+  const [payoutStatusFilter, setPayoutStatusFilter] = useState('Pending');
+  const [payoutPage, setPayoutPage] = useState(1);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [payoutActionToast, setPayoutActionToast] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -55,13 +65,37 @@ export const DonationsPage = () => {
     }
   };
 
+  const loadPayouts = async () => {
+    setPayoutsLoading(true);
+    setPayoutsError(null);
+    try {
+      const data = await fetchPayouts(payoutStatusFilter);
+      setPayouts(data || []);
+    } catch (err) {
+      setPayoutsError(err.response?.data?.message || err.message || tl('Unable to load payouts'));
+    } finally {
+      setPayoutsLoading(false);
+    }
+  };
+
+  const showPayoutToast = (msg) => {
+    setPayoutActionToast(msg);
+    setTimeout(() => setPayoutActionToast(''), 3500);
+  };
+
   useEffect(() => {
     if (activeTab === 'donations') {
       load();
-    } else {
+    } else if (activeTab === 'ledger') {
       loadLedger();
+    } else if (activeTab === 'payouts') {
+      loadPayouts();
     }
   }, [activeTab, settings?.system?.defaultLanguage, settings?.system?.timezone]);
+
+  useEffect(() => {
+    if (activeTab === 'payouts') loadPayouts();
+  }, [payoutStatusFilter]);
 
   const filteredDonations = donations.filter(d => {
     const q = donSearch.toLowerCase();
@@ -83,6 +117,8 @@ export const DonationsPage = () => {
   const pageDonations = filteredDonations.slice((donPage - 1) * ITEMS_PER_PAGE, donPage * ITEMS_PER_PAGE);
   const ledgerTotalPages = Math.max(1, Math.ceil(filteredLedger.length / ITEMS_PER_PAGE));
   const pageLedger = filteredLedger.slice((ledgerPage - 1) * ITEMS_PER_PAGE, ledgerPage * ITEMS_PER_PAGE);
+  const payoutTotalPages = Math.max(1, Math.ceil(payouts.length / ITEMS_PER_PAGE));
+  const pagePayouts = payouts.slice((payoutPage - 1) * ITEMS_PER_PAGE, payoutPage * ITEMS_PER_PAGE);
 
   return (
     <Layout
@@ -148,6 +184,12 @@ export const DonationsPage = () => {
           >
             {tl('Transaction Ledger')}
           </button>
+          <button
+            onClick={() => setActiveTab('payouts')}
+            className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition ${activeTab === 'payouts' ? 'bg-white text-[#4b5548] shadow-sm' : 'text-[#7a8476] hover:text-[#4b5548]'}`}
+          >
+            {tl('Payout Management')}
+          </button>
         </div>
 
         {error && (
@@ -175,7 +217,7 @@ export const DonationsPage = () => {
               <div className="flex items-center gap-2 rounded-full border border-[#e2e6dc] bg-white px-4 py-2.5 text-sm text-[#5a6457] shadow-sm">
                 <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#9aa294]">{tl('Method')}</span>
                 <select
-                  className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none"
+                  className="bg-transparent text-sm font-medium text-[#4b5548] focus:outline-none border-0 appearance-none"
                   value={methodFilter}
                   onChange={e => { setMethodFilter(e.target.value); setDonPage(1); }}
                 >
@@ -347,7 +389,234 @@ export const DonationsPage = () => {
             </div>
           </>
         )}
+        {/* ══════════════════════════════════════════════════════════════
+            PAYOUT MANAGEMENT TAB
+           ══════════════════════════════════════════════════════════════ */}
+        {activeTab === 'payouts' && (
+          <>
+            {payoutActionToast && (
+              <div className="mt-6 flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-700">
+                <svg className="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                {payoutActionToast}
+              </div>
+            )}
+
+            {payoutsError && (
+              <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{payoutsError}</div>
+            )}
+
+            {/* Status filter */}
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="filter-pill">
+                <span className="filter-label">{tl('Status')}</span>
+                <select
+                  className="filter-select"
+                  value={payoutStatusFilter}
+                  onChange={e => { setPayoutStatusFilter(e.target.value); setPayoutPage(1); }}
+                >
+                  <option value="">{tl('All')}</option>
+                  <option value="Pending">{tl('Pending')}</option>
+                  <option value="OnHold_ExcessVerification">{tl('On Hold')}</option>
+                  <option value="Approved">{tl('Approved')}</option>
+                  <option value="Released">{tl('Released')}</option>
+                  <option value="Rejected">{tl('Rejected')}</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-4 overflow-hidden rounded-2xl border border-[#e6eadf]">
+              <div className="grid grid-cols-[1fr_1.5fr_2fr_1fr_1.2fr_2fr_1.3fr_1.3fr_8rem] items-center gap-2 bg-[#f1f3ee] px-4 py-3 text-xs font-semibold uppercase tracking-wide text-[#7a8476]">
+                <span>{tl('Payout ID')}</span>
+                <span>{tl('Organization')}</span>
+                <span>{tl('Campaign')}</span>
+                <span className="text-right">{tl('Amount')}</span>
+                <span>{tl('Status')}</span>
+                <span>{tl('Excess Hold Reason')}</span>
+                <span>{tl('Requested At')}</span>
+                <span>{tl('Released At')}</span>
+                <span className="text-center">{tl('Actions')}</span>
+              </div>
+
+              {payoutsLoading ? (
+                <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('Loading payouts…')}</div>
+              ) : payouts.length === 0 ? (
+                <div className="border-t border-[#f0f2ec] px-4 py-10 text-center text-sm text-[#7a8476]">{tl('No payouts found.')}</div>
+              ) : pagePayouts.map((p) => {
+                const statusColors = {
+                  Pending:                    'bg-yellow-50 text-yellow-700 border-yellow-200',
+                  OnHold_ExcessVerification:  'bg-orange-50 text-orange-700 border-orange-200',
+                  Approved:                   'bg-blue-50 text-blue-700 border-blue-200',
+                  Released:                   'bg-green-50 text-green-700 border-green-200',
+                  Rejected:                   'bg-red-50 text-red-700 border-red-200',
+                };
+                const statusLabel = p.status === 'OnHold_ExcessVerification' ? tl('On Hold') : tl(p.status);
+                return (
+                  <div
+                    key={p.id}
+                    className="grid grid-cols-[1fr_1.5fr_2fr_1fr_1.2fr_2fr_1.3fr_1.3fr_8rem] items-center gap-2 border-t border-[#f0f2ec] px-4 py-4 text-sm text-[#5a6457] transition hover:bg-[#fafaf8]"
+                  >
+                    <span className="text-xs font-semibold text-[#9aa294]">#{p.id}</span>
+                    <span className="font-medium text-[#4b5548] truncate">{p.organization_name}</span>
+                    <span className="text-xs text-[#7a8476] truncate">{p.campaign_title}</span>
+                    <span className="text-right font-semibold text-[#4b5548]">₱{Number(p.amount).toLocaleString()}</span>
+                    <span>
+                      <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${statusColors[p.status] || 'bg-gray-50 text-gray-700 border-gray-200'}`}>
+                        {statusLabel}
+                      </span>
+                    </span>
+                    <span className="text-xs text-[#7a8476] truncate" title={p.excess_hold_reason || ''}>
+                      {p.status === 'OnHold_ExcessVerification' ? (p.excess_hold_reason || '—') : '—'}
+                    </span>
+                    <span className="text-xs text-[#9aa294]">
+                      {p.requested_at ? new Date(p.requested_at).toLocaleDateString() : '—'}
+                    </span>
+                    <span className="text-xs text-[#9aa294]">
+                      {p.released_at ? new Date(p.released_at).toLocaleDateString() : '—'}
+                    </span>
+                    <div className="flex items-center justify-center gap-1">
+                      {p.status === 'Pending' && (
+                        <>
+                          <button
+                            type="button"
+                            className="rounded-full border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100 transition"
+                            onClick={async () => {
+                              try {
+                                await approvePayout(p.id);
+                                showPayoutToast(`✓ Payout #${p.id} approved`);
+                                await loadPayouts();
+                              } catch (err) {
+                                setPayoutsError(err.response?.data?.message || err.message || tl('Unable to approve'));
+                              }
+                            }}
+                          >
+                            {tl('Approve')}
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded-full border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+                            onClick={() => { setRejectTarget(p); setRejectReason(''); }}
+                          >
+                            {tl('Reject')}
+                          </button>
+                        </>
+                      )}
+                      {p.status === 'Approved' && (
+                        <button
+                          type="button"
+                          className="rounded-full border border-green-200 bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 hover:bg-green-100 transition"
+                          onClick={async () => {
+                            try {
+                              await releasePayout(p.id);
+                              showPayoutToast(`✓ Payout #${p.id} released`);
+                              await loadPayouts();
+                            } catch (err) {
+                              setPayoutsError(err.response?.data?.message || err.message || tl('Unable to release'));
+                            }
+                          }}
+                        >
+                          {tl('Release')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-[#7a8476]">
+              <span>{tl('Showing')} {pagePayouts.length} {tl('of')} {payouts.length} {tl('payouts')} &bull; {tl('Page')} {payoutPage} {tl('of')} {payoutTotalPages}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={payoutPage === 1}
+                  onClick={() => setPayoutPage(p => p - 1)}
+                >
+                  {tl('Prev')}
+                </button>
+                <button className="rounded-full bg-[#77806d] px-3 py-1 text-sm font-semibold text-white">{payoutPage}</button>
+                <button
+                  className="rounded-full border border-[#e2e6dc] px-3 py-1 text-sm font-semibold text-[#6c7669] disabled:opacity-40"
+                  disabled={payoutPage === payoutTotalPages}
+                  onClick={() => setPayoutPage(p => p + 1)}
+                >
+                  {tl('Next')}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* ── Reject Payout Modal ── */}
+      {rejectTarget && (
+        <div
+          className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6"
+          onClick={() => setRejectTarget(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#fbe9e9] text-[#b83a3a]">
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path d="M12 17h.01" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#4b5548]">{tl('Reject Payout')}</h3>
+                <p className="text-sm text-[#9aa294]">#{rejectTarget.id} — {rejectTarget.organization_name}</p>
+              </div>
+            </div>
+            <div className="mt-4 rounded-xl border border-[#f0f2ec] bg-[#fafaf8] px-4 py-3 text-sm text-[#5a6457]">
+              <span className="font-semibold text-[#4b5548]">{rejectTarget.campaign_title}</span>
+              <span className="ml-2 text-[#9aa294]">₱{Number(rejectTarget.amount).toLocaleString()}</span>
+            </div>
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-semibold text-[#4b5548]">{tl('Rejection Reason')} <span className="text-red-500">*</span></p>
+              <textarea
+                className="w-full rounded-xl border border-[#e2e6dc] px-3 py-2 text-sm text-[#5a6457] placeholder:text-[#9aa294] focus:outline-none focus:ring-1 focus:ring-[#77806d]"
+                rows={3}
+                placeholder={tl('Enter reason for rejection…')}
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+              />
+            </div>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                className="rounded-full border border-[#e2e6dc] flex-1 px-4 py-2 text-sm font-semibold text-[#6c7669]"
+                onClick={() => setRejectTarget(null)}
+              >
+                {tl('Cancel')}
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-[#b83a3a] flex-1 px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+                disabled={!rejectReason.trim()}
+                onClick={async () => {
+                  try {
+                    await rejectPayout(rejectTarget.id, rejectReason.trim());
+                    setRejectTarget(null);
+                    showPayoutToast(`✓ Payout #${rejectTarget.id} rejected`);
+                    await loadPayouts();
+                  } catch (err) {
+                    setPayoutsError(err.response?.data?.message || err.message || tl('Unable to reject'));
+                    setRejectTarget(null);
+                  }
+                }}
+              >
+                {tl('Confirm Reject')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedDonation && (
         <div
           className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 px-4 py-6"

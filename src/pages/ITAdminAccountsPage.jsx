@@ -286,7 +286,7 @@ export const ITAdminAccountsPage = () => {
                 setStatusFilter(e.target.value);
                 setPagination(prev => ({ ...prev, page: 1 }));
               }}
-              className="bg-transparent text-sm font-medium text-[#2c3226] focus:outline-none"
+              className="bg-transparent text-sm font-medium text-[#2c3226] focus:outline-none border-0 appearance-none"
             >
               <option value="">{tl('All')}</option>
               <option value="Active">{tl('Active')}</option>

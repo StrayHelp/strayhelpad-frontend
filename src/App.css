@@ -54,7 +54,7 @@ body {
 }
 
 .filter-select {
-  @apply bg-transparent text-sm font-medium text-[#4b5548] outline-none focus:outline-none;
+  @apply bg-transparent text-sm font-medium text-[#4b5548] outline-none focus:outline-none appearance-none border-0;
 }
 
 .table-wrap {
@@ -137,7 +137,7 @@ body {
 }
 
 .form-select {
-  @apply w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d];
+  @apply w-full rounded-lg border border-[#e2e6dc] bg-white px-4 py-2.5 text-[#4b5548] shadow-sm focus:border-[#77806d] focus:outline-none focus:ring-1 focus:ring-[#77806d] appearance-none;
 }
 
 .form-textarea {
